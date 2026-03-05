@@ -8,7 +8,6 @@ class ScreenshotStep(Step):
     def __init__(self, terminal):
 
         super().__init__("Capture screenshot")
-
         self.terminal = terminal
 
     def execute(self, context):
@@ -20,8 +19,13 @@ class ScreenshotStep(Step):
 
         file = f"{path}/{self.terminal}.png"
 
-        logger.info(f"Taking screenshot: {file}")
+        terminal = context.terminal_manager.get_terminal(self.terminal)
 
-        subprocess.run(["scrot", file])
+        if not terminal:
+            raise Exception(f"Terminal not found: {self.terminal}")
 
-        return file
+        logger.info(f"Taking screenshot of terminal: {self.terminal}")
+
+        context.current_testcase.add_evidence(file)
+
+        return terminal.capture(file)

@@ -29,17 +29,30 @@ class VisibleTerminal(BaseTerminal):
             self.session
         ])
 
-        time.sleep(1)
+        time.sleep(1.5)
 
-        self.window_id = self._find_window()
+        self.window_id = subprocess.check_output(
+            ["xdotool", "getactivewindow"]
+        ).decode().strip()
+
+        logger.info(f"{self.name} window id: {self.window_id}")
 
     def _find_window(self):
 
-        for _ in range(20):
+        logger.info("Searching for terminal window...")
+
+        for _ in range(30):
 
             try:
+
                 result = subprocess.run(
-                    ["xdotool", "search", "--onlyvisible", "--class", "gnome-terminal"],
+                    [
+                        "xdotool",
+                        "search",
+                        "--onlyvisible",
+                        "--class",
+                        "Gnome-terminal"
+                    ],
                     capture_output=True,
                     text=True
                 )
@@ -47,8 +60,10 @@ class VisibleTerminal(BaseTerminal):
                 ids = result.stdout.strip().split()
 
                 if ids:
-                    window_id = ids[-1]  # newest window
-                    logger.info(f"{self.title} window id: {window_id}")
+                    window_id = ids[-1]
+
+                    logger.info(f"{self.name} window id: {window_id}")
+
                     return window_id
 
             except Exception as e:
@@ -57,6 +72,7 @@ class VisibleTerminal(BaseTerminal):
             time.sleep(0.5)
 
         logger.error("Failed to find terminal window")
+
         return None
 
     def run(self, command):
@@ -72,15 +88,22 @@ class VisibleTerminal(BaseTerminal):
             "Enter"
         ])
 
-    def capture(self):
-
-        screenshot_path = f"output/screenshots/{self.name}.png"
+    def capture(self, screenshot_path):
 
         logger.info(f"Capturing screenshot: {screenshot_path}")
+
+        if not self.window_id:
+            logger.error("No window ID found for terminal")
+            return None
+
+        subprocess.run(["xdotool", "windowactivate", self.window_id])
 
         subprocess.run(
             [
                 "scrot",
+                "-u",
+                "-w",
+                self.window_id,
                 screenshot_path
             ]
         )
