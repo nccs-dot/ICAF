@@ -9,8 +9,7 @@ class ReportManager:
         logger.info("Generating compliance report")
 
         report = ReportFactory.create(context, results)
-
-        path = report.generate()
+        path = report.generate(context, results)
 
         logger.info(f"Report generated: {path}")
 

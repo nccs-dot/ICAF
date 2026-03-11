@@ -20,13 +20,20 @@ def run(
     ssh_user = input("Enter SSH username: ")
     ssh_ip = input("Enter DuT IP: ")
     ssh_password = input("Enter SSH password: ")
+    if clause == "1.1.1":
+        snmp_user = typer.prompt("Enter SNMPv3 username")
+        snmp_auth_pass = typer.prompt("Enter SNMPv3 auth password", hide_input=True)
+        snmp_priv_pass = typer.prompt("Enter SNMPv3 priv password", hide_input=True)
     
     engine = Engine(
         clause=clause,
         section=section,
         ssh_user=ssh_user,
         ssh_ip=ssh_ip,
-        ssh_password=ssh_password
+        ssh_password=ssh_password,
+        snmp_user=snmp_user,
+        snmp_auth_pass=snmp_auth_pass,
+        snmp_priv_pass=snmp_priv_pass
     )
 
     engine.start()

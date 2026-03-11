@@ -9,7 +9,6 @@ from steps.pcap_start_step import PcapStartStep
 from steps.pcap_stop_step import PcapStopStep
 from steps.analyze_pcap_step import AnalyzePcapStep
 from steps.wireshark_packet_screenshot_step import WiresharkPacketScreenshotStep
-from steps.session_reset_step import SessionResetStep
 
 from utils.logger import logger
 
