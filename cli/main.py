@@ -17,15 +17,23 @@ def run(
     
     logger.info("TCAF CLI started")
     
-    ssh_user = input("Enter SSH username: ")
-    ssh_ip = input("Enter DuT IP: ")
-    ssh_password = input("Enter SSH password: ")
-    
+    # Always ask for DuT IP (needed by all clauses)
+    dut_ip = input("Enter DuT IP address: ")
+
+    ssh_user = None
+    ssh_password = None
+
+    # Only ask for SSH credentials for SSH-based clauses
+    NON_SSH_CLAUSES = {"1.10.1"}
+    if clause not in NON_SSH_CLAUSES:
+        ssh_user = input("Enter SSH username: ")
+        ssh_password = input("Enter SSH password: ")
+
     engine = Engine(
         clause=clause,
         section=section,
         ssh_user=ssh_user,
-        ssh_ip=ssh_ip,
+        ssh_ip=dut_ip,
         ssh_password=ssh_password
     )
 

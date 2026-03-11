@@ -32,7 +32,9 @@ class AnalyzePcapStep(Step):
         frames = result.stdout.strip().split("\n")
 
         if not frames or frames == [""]:
-            raise Exception("No matching packet found")
+            logger.info("No matching packet found")
+            context.matched_frame = None
+            return
 
         frame_number = frames[0]
 

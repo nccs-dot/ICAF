@@ -27,7 +27,7 @@ class TestCase:
 
     def run(self, context):
 
-        context.current_testcase = self.name
+        context.current_testcase = self
 
         try:
 

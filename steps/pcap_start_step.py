@@ -20,7 +20,8 @@ class PcapStartStep(Step):
 
         path = context.evidence.testcase_dir(clause, testcase)
 
-        pcap_file = f"{path}/pcap/{self.filename}"
+        timestamped_name = context.evidence.get_timestamped_filename(self.filename)
+        pcap_file = f"{path}/pcap/{timestamped_name}"
 
         logger.info(f"Starting PCAP capture: {pcap_file}")
 

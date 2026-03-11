@@ -54,7 +54,8 @@ class Engine:
 
         logger.info("Initializing runtime environment")
 
-        # Initialize terminal manager
+        # Initialize terminal manager and create default "tester" terminal
         self.context.terminal_manager = TerminalManager()
+        self.context.terminal_manager.create_terminal("tester")
 
-        logger.info("Terminal manager initialized")
+        logger.info("Terminal manager initialized with 'tester' terminal")
