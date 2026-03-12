@@ -9,7 +9,20 @@ from utils.dut_info import get_dut_info
 
 class Engine:
 
-    def __init__(self, clause=None, section=None, ssh_user=None, ssh_ip=None, ssh_password=None, snmp_user=None, snmp_auth_pass=None, snmp_priv_pass=None):
+    def __init__(
+            self,
+            clause=None, 
+            section=None, 
+            ssh_user=None, 
+            ssh_ip=None, 
+            ssh_password=None, 
+            snmp_user=None, 
+            snmp_auth_pass=None, 
+            snmp_priv_pass=None,
+            web_login_url=None,
+            web_username=None,
+            web_password=None
+        ):
 
         self.context = RuntimeContext(
             clause=clause,
@@ -19,7 +32,11 @@ class Engine:
             ssh_password=ssh_password,
             snmp_user=snmp_user,
             snmp_auth_pass=snmp_auth_pass,
-            snmp_priv_pass=snmp_priv_pass
+            snmp_priv_pass=snmp_priv_pass,
+            web_login_url = web_login_url,
+            web_username = web_username,
+            web_password = web_password
+
         )
 
         logger.info("Engine initialized")

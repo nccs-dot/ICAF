@@ -9,6 +9,8 @@ from steps.pcap_start_step import PcapStartStep
 from steps.pcap_stop_step import PcapStopStep
 from steps.analyze_pcap_step import AnalyzePcapStep
 from steps.wireshark_packet_screenshot_step import WiresharkPacketScreenshotStep
+from steps.session_reset_step import SessionResetStep
+from steps.clear_terminal_step import ClearTerminalStep
 
 from utils.logger import logger
 
@@ -36,7 +38,8 @@ class TC1SSHFirstConnection(TestCase):
             [
                 "continue connecting",
                 "password",
-                "connection refused"
+                "connection refused",
+                "Network is unreachable"
             ]
         ).execute(context)
 
@@ -74,6 +77,10 @@ class TC1SSHFirstConnection(TestCase):
 
             ScreenshotStep("tester").execute(context)
 
+            StepRunner([
+                SessionResetStep("tester")
+            ]).run(context)
+
             self.pass_test()
 
             return self
@@ -84,6 +91,25 @@ class TC1SSHFirstConnection(TestCase):
             logger.error("SSH connection refused")
 
             ScreenshotStep("tester").execute(context)
+
+            self.fail_test()
+
+            return self
+        
+        # network unreachable case
+        if pattern == "Network is unreachable":
+
+            logger.error("Network is unreachable - SSH server cannot be reached")
+
+            StepRunner([
+                PcapStopStep()
+            ]).run(context)
+
+            ScreenshotStep("tester").execute(context)
+
+            StepRunner([
+                ClearTerminalStep("tester")
+            ]).run(context)
 
             self.fail_test()
 

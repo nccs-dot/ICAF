@@ -4,11 +4,12 @@ from datetime import datetime
 
 class EvidenceManager:
 
-    def __init__(self):
-
+    def __init__(self, clause):
+        
+        self.clause = clause
         timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 
-        self.run_dir = f"output/runs/{timestamp}"
+        self.run_dir = f"output/runs/{timestamp}-{clause}"
 
         os.makedirs(self.run_dir, exist_ok=True)
 

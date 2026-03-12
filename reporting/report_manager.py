@@ -7,6 +7,7 @@ class ReportManager:
     def generate(self, context, results):
 
         logger.info("Generating compliance report")
+        print(context.evidence.__dict__)
 
         report = ReportFactory.create(context, results)
         path = report.generate(context, results)

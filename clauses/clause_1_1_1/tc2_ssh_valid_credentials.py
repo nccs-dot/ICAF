@@ -13,7 +13,6 @@ from utils.logger import logger
 class TC2SSHValidCredentials(TestCase):
 
     def __init__(self):
-
         super().__init__(
             "TC2_SSH_VALID_CREDENTIALS",
             "Tester connects to DUT via SSH with valid credentials"
@@ -23,70 +22,90 @@ class TC2SSHValidCredentials(TestCase):
 
         ssh_cmd = f"ssh -o HostKeyAlgorithms=+ssh-rsa -o PubkeyAcceptedAlgorithms=+ssh-rsa {context.ssh_user}@{context.ssh_ip}"
 
-        tm = context.terminal_manager
+        try:
 
-        StepRunner([
-            SessionResetStep("tester"),
-            CommandStep("tester", ssh_cmd)
-        ]).run(context)
-
-        pattern, output = ExpectOneOfStep(
-            "tester",
-            [
-                "password",
-                "continue connecting",
-                "connection refused"
-            ]
-        ).execute(context)
-
-        if pattern == "continue connecting":
-
+            # Start SSH connection
             StepRunner([
-                InputStep("tester", "yes")
+                CommandStep("tester", ssh_cmd)
             ]).run(context)
 
-            pattern, output = ExpectOneOfStep(
+            # Wait for SSH prompts
+            pattern, _ = ExpectOneOfStep(
                 "tester",
-                ["password"]
+                [
+                    "password",
+                    "continue connecting",
+                    "connection refused"
+                ]
             ).execute(context)
 
-        if pattern == "password":
+            # Handle first-time SSH host verification
+            if pattern == "continue connecting":
 
+                StepRunner([
+                    InputStep("tester", "yes")
+                ]).run(context)
+
+                pattern, _ = ExpectOneOfStep(
+                    "tester",
+                    ["password"]
+                ).execute(context)
+
+            # Handle connection failure
+            if pattern == "connection refused":
+
+                logger.error("SSH connection refused")
+
+                ScreenshotStep("tester").execute(context)
+
+                self.fail_test()
+                return self
+
+            # Send password
             StepRunner([
                 InputStep("tester", context.ssh_password)
             ]).run(context)
 
-            # verify connection by executing command
+            # Wait for successful login indicators
+            pattern, _ = ExpectOneOfStep(
+                "tester",
+                [
+                    "$",
+                    "#",
+                    ">",
+                    "Permission denied"
+                ]
+            ).execute(context)
+
+            if pattern == "Permission denied":
+
+                logger.error("Valid SSH credentials rejected")
+
+                ScreenshotStep("tester").execute(context)
+
+                self.fail_test()
+                return self
+
+            # Run a command to confirm shell access
             StepRunner([
                 CommandStep("tester", "whoami")
             ]).run(context)
 
-            output = tm.capture_output("tester")
-
-            if context.ssh_user in output:
-
-                logger.info("SSH login verified using command execution")
-
-                ScreenshotStep("tester").execute(context)
-
-                self.pass_test()
-
-                return self
-
-            logger.error("SSH login failed despite valid credentials")
+            pattern, _ = ExpectOneOfStep(
+                "tester",
+                [context.ssh_user]
+            ).execute(context)
 
             ScreenshotStep("tester").execute(context)
 
-            self.fail_test()
+            logger.info("SSH login verified using command execution")
 
-            return self
+            self.pass_test()
 
-        if pattern == "connection refused":
+        finally:
 
-            logger.error("SSH connection refused")
+            StepRunner([
+                SessionResetStep("tester")
+            ]).run(context)
 
-            ScreenshotStep("tester").execute(context)
-
-            self.fail_test()
-
-            return self
+        return self

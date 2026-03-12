@@ -15,6 +15,8 @@ class SessionResetStep(Step):
 
     def execute(self, context):
 
+        time.sleep(2)
+
         StepRunner([
             EnsureSSHDisconnectedStep(self.terminal),
             ClearTerminalStep(self.terminal)

@@ -1,5 +1,6 @@
 from utils.logger import logger
 from terminal.visible_terminal import VisibleTerminal
+import time
 
 
 class TerminalManager:
@@ -55,11 +56,23 @@ class TerminalManager:
 
         return terminal.capture()
     
-    def capture_output(self, terminal_name):
+    def capture_output(self, terminal_name, stable_checks=5, interval=0.2):
 
         terminal = self.get_terminal(terminal_name)
 
         if not terminal:
-            raise Exception(f"Terminal not found: {terminal_name}")
+            return ""
 
-        return terminal.capture_output()
+        last_output = ""
+
+        for _ in range(stable_checks):
+
+            current_output = terminal.capture_output()
+
+            if current_output == last_output:
+                return current_output
+
+            last_output = current_output
+            time.sleep(interval)
+
+        return last_output

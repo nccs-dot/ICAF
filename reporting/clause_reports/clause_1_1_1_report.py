@@ -5,6 +5,8 @@ from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.enum.table import WD_TABLE_ALIGNMENT, WD_ALIGN_VERTICAL
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
+from docx.shared import Pt
+from docx.oxml import OxmlElement
 
 
 # ─────────────────────────────────────────────
@@ -227,17 +229,40 @@ class Clause111Report:
             "or equivalent mechanisms."
         )
 
+
+    def _add_terminal_block(self, doc, text):
+
+        table = doc.add_table(rows=1, cols=1)
+        table.allow_autofit = False
+        table.autofit = False
+
+        cell = table.rows[0].cells[0]
+
+        # grey background
+        tcPr = cell._tc.get_or_add_tcPr()
+        shd = OxmlElement("w:shd")
+        shd.set(qn("w:fill"), "EEEEEE")
+        tcPr.append(shd)
+
+        p = cell.paragraphs[0]
+
+        for line in text.split("\n"):
+            run = p.add_run(line + "\n")
+            run.font.name = "Courier New"
+            run.font.size = Pt(9)
+
     # ─────────────────────────────────────────
     # SCREENSHOT EVIDENCE BLOCK
     # ─────────────────────────────────────────
     def _add_screenshot_block(self, doc, title, image_path):
         """Lavender-background card with purple border and centred image."""
         TABLE_WIDTH = Inches(7.8)
-        IMAGE_WIDTH = Inches(6.2)
+        IMAGE_WIDTH = Inches(5.8)
 
         table = doc.add_table(rows=2, cols=1)
         table.alignment     = WD_TABLE_ALIGNMENT.CENTER
         table.allow_autofit = False
+        table.autofit = False
 
         self._prevent_table_row_split(table)
 
@@ -295,29 +320,42 @@ class Clause111Report:
         self._add_itsar_heading(doc, "4. Test Execution", 2)
 
         for idx, tc in enumerate(results, start=1):
+            print(vars(tc))  
 
             h = self._add_itsar_heading(doc, f"4.{idx} Test Case: {tc.name}", 2)
             self._keep_with_next(h)
 
             doc.add_paragraph(f"Description: {tc.description}")
 
-            # coloured PASS / FAIL label
-            p   = doc.add_paragraph("Result: ")
+            p = doc.add_paragraph("Result: ")
             run = p.add_run(tc.status)
-            run.bold           = True
+            run.bold = True
             run.font.color.rgb = GREEN if tc.status.upper() == "PASS" else RED
 
-            # evidence screenshots
             for evidence in tc.evidence:
-                screenshot = getattr(evidence, "screenshot", None)
+
+                command = evidence.get("command")
+                output = evidence.get("output")
+                screenshot = evidence.get("screenshot")
+
+                if command:
+                    p = doc.add_paragraph()
+                    r = p.add_run("Command Executed: ")
+                    r.bold = True
+                    p.add_run(command)
+
+                if output:
+                    p = doc.add_paragraph()
+                    p.add_run("Command Output: ").bold = True
+                    self._add_terminal_block(doc, output)
+
                 if screenshot and os.path.exists(screenshot):
                     self._add_screenshot_block(
                         doc,
                         f"Evidence Screenshot — {os.path.basename(screenshot)}",
-                        evidence,
+                        screenshot,
                     )
 
-            # visual separator between test cases
             doc.add_paragraph()
 
     # ─────────────────────────────────────────

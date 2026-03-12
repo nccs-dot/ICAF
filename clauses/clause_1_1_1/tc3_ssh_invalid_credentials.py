@@ -6,6 +6,7 @@ from steps.expect_one_of_step import ExpectOneOfStep
 from steps.screenshot_step import ScreenshotStep
 from steps.input_step import InputStep
 from steps.session_reset_step import SessionResetStep
+from steps.clear_terminal_step import ClearTerminalStep
 
 from utils.logger import logger
 
@@ -23,68 +24,85 @@ class TC3SSHInvalidCredentials(TestCase):
 
         ssh_cmd = f"ssh -o HostKeyAlgorithms=+ssh-rsa -o PubkeyAcceptedAlgorithms=+ssh-rsa {context.ssh_user}@{context.ssh_ip}"
 
-        tm = context.terminal_manager
-
-        StepRunner([
-            SessionResetStep("tester"),
-            CommandStep("tester", ssh_cmd)
-        ]).run(context)
-
-        pattern, output = ExpectOneOfStep(
-            "tester",
-            [
-                "password",
-                "continue connecting",
-                "connection refused"
-            ]
-        ).execute(context)
-
-        if pattern == "continue connecting":
+        try:
 
             StepRunner([
-                InputStep("tester", "yes")
+                CommandStep("tester", ssh_cmd)
             ]).run(context)
 
-            pattern, output = ExpectOneOfStep(
+            pattern, _ = ExpectOneOfStep(
                 "tester",
-                ["password"]
+                [
+                    "password",
+                    "continue connecting",
+                    "connection refused"
+                ]
             ).execute(context)
 
-        if pattern == "password":
+            if pattern == "continue connecting":
 
-            # try wrong password multiple times
-            StepRunner([
-                InputStep("tester", "wrongpassword"),
-                InputStep("tester", "wrongpassword"),
-                InputStep("tester", "wrongpassword")
-            ]).run(context)
+                StepRunner([
+                    InputStep("tester", "yes")
+                ]).run(context)
 
-            output = tm.capture_output("tester")
+                pattern, _ = ExpectOneOfStep(
+                    "tester",
+                    ["password"]
+                ).execute(context)
 
-            if "Permission denied" in output:
+            if pattern == "connection refused":
 
-                logger.info("Invalid credentials correctly rejected")
+                logger.error("SSH connection refused")
 
                 ScreenshotStep("tester").execute(context)
 
-                self.pass_test()
-
+                self.fail_test()
                 return self
 
-            logger.error("SSH login succeeded with invalid credentials")
+            # Attempt wrong password multiple times (synchronized)
+            for attempt in range(3):
+
+                StepRunner([
+                    InputStep("tester", "wrongpassword")
+                ]).run(context)
+
+                pattern, output = ExpectOneOfStep(
+                    "tester",
+                    [
+                        "Permission denied",
+                        "password",
+                        "Connection closed",
+                        "$",
+                        "#"
+                    ]
+                ).execute(context)
+
+                # If shell prompt appears, login succeeded unexpectedly
+                if pattern in ["$", "#"]:
+
+                    logger.error("SSH login succeeded with invalid credentials")
+
+                    ScreenshotStep("tester").execute(context)
+
+                    self.fail_test()
+
+                    return self
+
+                # If SSH closes connection after failures
+                if pattern == "Connection closed":
+
+                    break
 
             ScreenshotStep("tester").execute(context)
 
-            self.fail_test()
+            logger.info("Invalid SSH credentials correctly rejected")
 
-            return self
+            self.pass_test()
 
-        if pattern == "connection refused":
+        finally:
 
-            logger.error("SSH connection refused")
+            StepRunner([
+                ClearTerminalStep("tester")
+            ]).run(context)
 
-            ScreenshotStep("tester").execute(context)
-
-            self.fail_test()
-
-            return self
+        return self

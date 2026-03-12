@@ -8,7 +8,18 @@ class RuntimeContext:
     Shared runtime state used across the TCAF framework.
     """
 
-    def __init__(self, clause=None, section=None, ssh_user=None, ssh_ip=None, ssh_password=None, snmp_user=None, snmp_auth_pass=None, snmp_priv_pass=None):
+    def __init__(
+            self, 
+            clause=None, 
+            section=None, 
+            ssh_user=None, ssh_ip=None, 
+            ssh_password=None, snmp_user=None, 
+            snmp_auth_pass=None, 
+            snmp_priv_pass=None,
+            web_login_url=None,
+            web_username=None,
+            web_password=None
+        ):
 
         self.execution_id = str(uuid.uuid4())
 
@@ -17,12 +28,17 @@ class RuntimeContext:
         # CLI parameters
         self.clause = clause
         self.section = section
+
+
         self.ssh_user = ssh_user
         self.ssh_ip = ssh_ip
         self.ssh_password = ssh_password
         self.snmp_user = snmp_user
         self.snmp_auth_pass = snmp_auth_pass
         self.snmp_priv_pass = snmp_priv_pass
+        self.web_login_url = web_login_url
+        self.web_username = web_username
+        self.web_password = web_password
 
         # Core subsystems (initialized later)
         self.ssh_connection = None
@@ -36,7 +52,7 @@ class RuntimeContext:
         self.adapter = None
 
         # Evidence tracking
-        self.evidence = EvidenceManager()
+        self.evidence = EvidenceManager(self.clause)
 
         self.current_testcase = None
 

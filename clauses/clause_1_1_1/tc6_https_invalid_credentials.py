@@ -16,7 +16,7 @@ class TC6HTTPSInvalidLogin(TestCase):
 
     def run(self, context):
 
-        url = f"https://{context.ssh_ip}"
+        url = f"http://{context.ssh_ip}/dvwa/login.php"
 
         StepRunner([
             OpenURLStep(url),
