@@ -1,7 +1,0 @@
-typer
-rich
-paramiko
-reportlab
-python-docx
-scapy
-selenium
