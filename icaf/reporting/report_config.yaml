@@ -1,0 +1,40 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# ICAF Report Configuration
+# Contains document-level metadata that does NOT come from the DUT profile
+# or the runtime context.  Edit this file to customise every generated report.
+# ─────────────────────────────────────────────────────────────────────────────
+
+organisation:
+  # Name of the testing laboratory / organisation that runs ICAF
+  name: "Apollo Infoways Private Limited"
+  # Short code used in document numbering (e.g. /IP ROUTER/1.1)
+  doc_prefix: "/IP ROUTER/1.1"
+
+document:
+  # These appear on the front-page four-column metadata table
+  created_by:   "Test Engineer"
+  reviewed_by:  "Senior Security Reviewer"
+  approved_by:  "Approval Authority"
+
+  # These appear on the second four-column table (conducted / reviewed dates
+  # are filled automatically from context.start_time / context.end_time)
+  conducted_by: "Tester"
+  reviewed_by2: "Reviewer"
+
+revision_history:
+  # Each entry becomes one row in the Revision History table.
+  # Fields: version | date | description
+  # Use "auto" in the date field to substitute context.start_time at runtime.
+  entries:
+    - version: "V.1.0"
+      date: "Initial Release"
+      description: "NCCS Approved Test Plan with initial Test Cases."
+    - version: "V.1.1"
+      date: "auto"
+      description: "First Release of Test Report — automated evidence collected."
+
+prepared_for:
+  # Text rendered below the DUT name on the front page
+  line: >-
+    National Centre of Communications Security, Bengaluru,
+    Department of Telecom, Ministry of Communications, Government of India

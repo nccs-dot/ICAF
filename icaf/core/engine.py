@@ -24,7 +24,8 @@ class Engine:
         snmp_community=None,
         web_login_url=None,
         web_username=None,
-        web_password=None
+        web_password=None,
+        oam_context=None
     ):
 
         # Load DUT profile
@@ -44,7 +45,8 @@ class Engine:
             snmp_community=snmp_community,
             web_login_url=web_login_url,
             web_username=web_username,
-            web_password=web_password
+            web_password=web_password,
+            oam_context=oam_context
         )
 
         # Inject profile into context

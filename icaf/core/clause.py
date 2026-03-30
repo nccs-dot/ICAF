@@ -13,7 +13,23 @@ class BaseClause:
 
         results = []
 
+        oam_context = getattr(self.context, "oam_context", None)
+
+        allowed_protocols = None
+
+        if oam_context:
+            allowed_protocols = oam_context.get("verified_protocols", [])
+
         for tc in self.testcases:
+
+            # FILTER LOGIC HERE
+            protocol = getattr(tc, "protocol", None)
+
+            if allowed_protocols is not None and protocol:
+                if protocol not in allowed_protocols:
+                    from icaf.utils.logger import logger
+                    logger.info(f"Skipping {tc.name} (protocol={protocol} not available)")
+                    continue
 
             # Set active testcase in runtime context
             self.context.current_testcase = tc

@@ -19,6 +19,7 @@ from icaf.utils.logger import logger
 
 
 class TC1SNMPv3Positive(TestCase):
+    protocol = "snmp"
 
     def __init__(self):
         super().__init__(

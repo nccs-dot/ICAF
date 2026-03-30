@@ -19,7 +19,8 @@ class RuntimeContext:
             snmp_community=None,
             web_login_url=None,
             web_username=None,
-            web_password=None
+            web_password=None,
+            oam_context=None
         ):
 
         self.execution_id = str(uuid.uuid4())
@@ -77,6 +78,8 @@ class RuntimeContext:
 
         self.itsar_section = "1.1 Access and Authorization"
         self.itsar_requirement = "1.1.1 Management Protocols Entity Mutual Authentication"
+
+        self.oam_context = oam_context
 
     def summary(self):
         """

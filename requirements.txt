@@ -4,3 +4,4 @@ selenium
 pyyaml
 python-docx
 pyautogui
+pandas

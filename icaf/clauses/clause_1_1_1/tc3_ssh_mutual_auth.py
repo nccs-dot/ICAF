@@ -19,6 +19,7 @@ from icaf.utils.logger import logger
 
 
 class TC3SSHMutualAuth(TestCase):
+    protocol = "ssh"
 
     def __init__(self):
         super().__init__(
@@ -55,7 +56,7 @@ class TC3SSHMutualAuth(TestCase):
     # ── nmap cipher scan ──────────────────────────────────────────────────
 
     def _nmap_scan(self, context):
-        cmd = f"sudo nmap -p 22 --script ssh2-enum-algos {context.ssh_ip}"
+        cmd = f"nmap -p 22 --script ssh2-enum-algos {context.ssh_ip}"
         StepRunner([CommandStep("tester", cmd, settle_time=10)]).run(context)
         ExpectOneOfStep("tester", ["Nmap done", "kex_algorithms", "encryption_algorithms"],
                         timeout=30).execute(context)

@@ -18,6 +18,7 @@ from icaf.utils.logger import logger
 
 
 class TC2SNMPv3InvalidCredentials(TestCase):
+    protocol = "snmp"
 
     def __init__(self):
         super().__init__(

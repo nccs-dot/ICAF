@@ -78,6 +78,11 @@ def run(
         "--profile",
         help="DUT profile configuration (linux, openwrt, cisco, etc)"
     ),
+    oam: str = typer.Option(
+        None,
+        "--oam",
+        help="Path to OAM Excel file"
+    ),
 ):
 
     show_banner()
@@ -153,6 +158,18 @@ def run(
             hide_input=True
         )
 
+    oam_context = None
+
+    if oam:
+        console.print("\n[bold cyan]Processing OAM Excel...[/bold cyan]\n")
+
+        from icaf.oam.oam_manager import process_oam
+
+        oam_context = process_oam(oam, ssh_ip)
+
+        console.print(f"[green]Detected Protocols:[/green] {oam_context['raw_protocols']}")
+        console.print(f"[green]Verified Protocols:[/green] {oam_context['verified_protocols']}\n")
+
     engine = Engine(
         clause=clause,
         section=section,
@@ -166,7 +183,8 @@ def run(
         web_login_url=web_login_url,
         web_username=web_username,
         web_password=web_password,
-        snmp_community=snmp_community
+        snmp_community=snmp_community,
+        oam_context=oam_context
     )
 
     console.print()

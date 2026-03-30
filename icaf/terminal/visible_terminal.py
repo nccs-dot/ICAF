@@ -22,6 +22,7 @@ class VisibleTerminal(BaseTerminal):
 
         subprocess.Popen([
             "gnome-terminal",
+            "--full-screen",
             "--",
             "tmux",
             "attach",
