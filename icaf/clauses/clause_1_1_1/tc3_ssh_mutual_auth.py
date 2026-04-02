@@ -28,16 +28,17 @@ class TC3SSHMutualAuth(TestCase):
         )
 
     def _ssh_cmd(self, context):
-        binary  = context.profile.get("ssh.binary", "ssh")
+        base  = context.profile.get("ssh.base", "ssh")
         options = context.profile.get_list("ssh.connect_options")
         target  = context.profile.get("ssh.target", "{user}@{ip}").format(
             user=context.ssh_user, ip=context.ssh_ip)
-        return " ".join([binary] + options + [target])
+        return " ".join([base] + options + [target])
 
     # ── verify SSH enabled ────────────────────────────────────────────────
 
     def _verify_ssh_enabled(self, context):
         ssh_cmd      = self._ssh_cmd(context)
+        display_ssh_status = context.profile.get("ssh.commands.ssh_server_status")
         StepRunner([
             CommandStep("tester", ssh_cmd, settle_time=4),
         ]).run(context)
@@ -46,8 +47,10 @@ class TC3SSHMutualAuth(TestCase):
         StepRunner([InputStep("tester", context.ssh_password)]).run(context)
         ExpectOneOfStep("tester", ["#", ">", "$"], timeout=10).execute(context)
 
+        StepRunner([ClearTerminalStep("tester")]).run(context)
+
         # Query SSH server status
-        StepRunner([CommandStep("tester", "display ssh server status", settle_time=2)]).run(context)
+        StepRunner([CommandStep("tester", display_ssh_status, settle_time=2)]).run(context)
         ExpectOneOfStep("tester", ["SSH version", "version : 2", "Enable", "#"],
                         timeout=8).execute(context)
         ScreenshotStep("tester").execute(context)
@@ -61,6 +64,7 @@ class TC3SSHMutualAuth(TestCase):
         ExpectOneOfStep("tester", ["Nmap done", "kex_algorithms", "encryption_algorithms"],
                         timeout=30).execute(context)
         ScreenshotStep("tester").execute(context)
+        StepRunner([ClearTerminalStep("tester")]).run(context)
 
     # ── positive case ─────────────────────────────────────────────────────
 
@@ -113,12 +117,11 @@ class TC3SSHMutualAuth(TestCase):
 
         retry_msgs = [
             "Permission denied, please try again",
-            "Permission denied"
         ]
 
         reject_p = (
             context.profile.get_list("ssh.failure_prompt")
-            + ["Too many authentication failures", "Disconnected", "Connection closed"]
+            + ["Too many authentication failures", "Disconnected", "Connection closed", "Permission denied"]
         )
 
         StepRunner([
@@ -170,8 +173,7 @@ class TC3SSHMutualAuth(TestCase):
         self._verify_ssh_enabled(context)
         self._nmap_scan(context)
         pos_ok = self._positive(context)
-        # neg_ok = self._negative(context)
-        neg_ok = True
+        neg_ok = self._negative(context)
 
         # Inter-TC cooldown
         # StepRunner([SessionResetStep("tester", post_reset_delay=4)]).run(context)

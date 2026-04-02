@@ -21,16 +21,6 @@ from icaf.utils.logger import logger
 
 
 class ClickStep(Step):
-    """
-    Click a web element.
-
-    Parameters
-    ----------
-    selector : str
-        CSS selector for the target element.
-    timeout : int
-        Seconds to wait for the element to be clickable.  Default 10.
-    """
 
     def __init__(self, selector: str, timeout: int = 10):
         super().__init__("Click element")
@@ -39,16 +29,24 @@ class ClickStep(Step):
 
     def execute(self, context) -> None:
         driver = context.browser.driver
+
+        # Detect selector type
+        if self.selector.strip().startswith("//"):
+            by = By.XPATH
+        else:
+            by = By.CSS_SELECTOR
+
         logger.info("ClickStep: waiting for element '%s'", self.selector)
 
         try:
             element = WebDriverWait(driver, self.timeout).until(
-                EC.element_to_be_clickable((By.CSS_SELECTOR, self.selector))
+                EC.element_to_be_clickable((by, self.selector))
             )
-            # Scroll into view in case element is outside the viewport
+
             driver.execute_script(
                 "arguments[0].scrollIntoView({block: 'center'});", element
             )
+
             element.click()
             logger.info("ClickStep: clicked '%s'", self.selector)
 

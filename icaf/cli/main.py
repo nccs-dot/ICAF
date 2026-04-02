@@ -27,7 +27,7 @@ DEFAULT_SNMP_PRIV_PASS = "privpass"
 DEFAULT_SNMP_COMMUNITY = "community"
 
 DEFAULT_WEB_USERNAME = "admin"
-DEFAULT_WEB_PASSWORD = "123"
+DEFAULT_WEB_PASSWORD = "yourpassword"
 
 DEFAULT_PROFILE = "default"
 
@@ -144,7 +144,7 @@ def run(
 
         web_login_url = typer.prompt(
             "Enter Web Login URL",
-            default=f"http://{ssh_ip}/dvwa/login.php"
+            default=f"http://authelia.home.local"
         )
 
         web_username = typer.prompt(

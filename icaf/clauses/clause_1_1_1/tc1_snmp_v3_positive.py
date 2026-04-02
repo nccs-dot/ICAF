@@ -63,7 +63,7 @@ class TC1SNMPv3Positive(TestCase):
                 logger.info("TC1: SNMPv%s correctly disabled — no response", ver)
                 StepRunner([
                     AnalyzePcapStep(f"udp.port == 161 && ip.addr == {target}"),
-                    WiresharkPacketScreenshotStep("snmp"),
+                    WiresharkPacketScreenshotStep(),
                 ]).run(context)
             else:
                 logger.warning("TC1: SNMPv%s returned a response — may not be disabled", ver)
@@ -76,19 +76,21 @@ class TC1SNMPv3Positive(TestCase):
     def _configure_snmpv3(self, context):
         
         # New profile-driven SSH command
-        ssh_binary = context.profile.get("ssh.binary", "ssh")
+        ssh_base = context.profile.get("ssh.base", "ssh")
         ssh_options = context.profile.get_list("ssh.connect_options")
         ssh_target = context.profile.get("ssh.target", "{user}@{ip}").format(
             user=context.ssh_user,
             ip=context.ssh_ip
         )
 
-        ssh_cmd = " ".join([ssh_binary, *ssh_options, ssh_target])
+        ssh_cmd = " ".join([ssh_base, *ssh_options, ssh_target])
 
         StepRunner([CommandStep("tester", ssh_cmd)]).run(context)
         ExpectOneOfStep("tester", context.profile.get_list("ssh.password_prompt")).execute(context)
         StepRunner([InputStep("tester", context.ssh_password)]).run(context)
         ExpectOneOfStep("tester", ["#", ">", "$"], timeout=10).execute(context)
+        StepRunner([ClearTerminalStep("tester")]).run(context)
+
 
         dut_cmds = context.profile.get_list("snmp.config_commands")
 
@@ -99,7 +101,10 @@ class TC1SNMPv3Positive(TestCase):
 
         ScreenshotStep("tester").execute(context)
         # Disconnect from DUT config session before running SNMP walk
-        StepRunner([SessionResetStep("tester", post_reset_delay=2)]).run(context)
+        StepRunner([
+            SessionResetStep("tester", post_reset_delay=2),
+            SessionResetStep("tester", post_reset_delay=2)
+        ]).run(context)
         logger.info("TC1: SNMPv3 configuration complete")
 
     # ── step 3: valid SNMPv3 walk ─────────────────────────────────────────
@@ -112,7 +117,7 @@ class TC1SNMPv3Positive(TestCase):
 
         opts = (f"-v3 -u {snmp_user} -l authPriv "
                 f"-a SHA -A \"{auth_pass}\" -x AES -X \"{priv_pass}\"")
-        cmd = f"snmpget {opts} {target} 1.3.6.1.2.1.1.3.0"
+        cmd = f"snmpwalk {opts} {target} 1.3.6.1.2.1.1.3.0 | head -20"
 
         StepRunner([
             PcapStartStep(interface="eth0", filename="tc1_snmpv3_valid.pcapng"),
@@ -127,6 +132,7 @@ class TC1SNMPv3Positive(TestCase):
 
         StepRunner([PcapStopStep()]).run(context)
         ScreenshotStep("tester").execute(context)
+        StepRunner([ClearTerminalStep("tester")]).run(context)
 
         if any(f in pattern for f in ["Timeout", "Authentication failure", "Error"]):
             logger.error("TC1: valid SNMPv3 walk failed — %s", pattern)
@@ -135,8 +141,8 @@ class TC1SNMPv3Positive(TestCase):
 
         logger.info("TC1: valid SNMPv3 walk succeeded")
         StepRunner([
-            AnalyzePcapStep("snmp"),
-            WiresharkPacketScreenshotStep("snmp"),
+            AnalyzePcapStep("snmp || udp.port == 161 || udp.port == 162"),
+            WiresharkPacketScreenshotStep(),
         ]).run(context)
         return True
 
@@ -147,9 +153,9 @@ class TC1SNMPv3Positive(TestCase):
         auth_pass = context.profile.get("snmp.auth_pass", context.snmp_auth_pass or "Test@123")
         priv_pass = context.profile.get("snmp.priv_pass", context.snmp_priv_pass or "Test@123")
 
-        opts = (f"-v3 -u user2 -l authPriv "
+        opts = (f"-v3 -u User1 -l authPriv "
                 f"-a MD5 -A \"{auth_pass}\" -x DES -X \"{priv_pass}\"")
-        cmd = f"snmpget {opts} {target} 1.3.6.1.2.1.1.3.0"
+        cmd = f"snmpwalk {opts} {target} 1.3.6.1.2.1.1.3.0 | head -20"
 
         StepRunner([
             PcapStartStep(interface="eth0", filename="tc1_snmpv3_weak.pcapng"),
@@ -158,7 +164,7 @@ class TC1SNMPv3Positive(TestCase):
 
         pattern, _ = ExpectOneOfStep(
             "tester",
-            ["Timeout", "No Response", "No response", "iso.", "STRING", "unknown host"],
+            ["Timeout", "No Response", "No response", "iso.", "STRING", "unknown host", "Authentication failure"],
             timeout=15,
         ).execute(context)
 
@@ -172,8 +178,8 @@ class TC1SNMPv3Positive(TestCase):
 
         logger.info("TC1: weak-algorithm user2 correctly rejected")
         StepRunner([
-            AnalyzePcapStep("snmp"),
-            WiresharkPacketScreenshotStep("snmp"),
+            AnalyzePcapStep("snmp || udp.port == 161 || udp.port == 162"),
+            WiresharkPacketScreenshotStep(),
         ]).run(context)
         return True
 

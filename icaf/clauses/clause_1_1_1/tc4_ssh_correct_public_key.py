@@ -34,9 +34,11 @@ class TC4SSHCorrectPublicKey(TestCase, SSHMixin):
     def _generate_key(self, context):
         key_path = context.profile.get("ssh.pubkey.key_path", "~/.ssh/id_ecdsaa")
 
+        StepRunner([ClearTerminalStep("tester")]).run(context)
+
         StepRunner([
             CommandStep("tester", f"ssh-keygen -t ecdsa -b 256 -f {key_path} -N ''",
-                        settle_time=4),
+                        settle_time=4, capture_evidence=False),
         ]).run(context)
 
         pattern, _ = ExpectOneOfStep(
@@ -47,14 +49,19 @@ class TC4SSHCorrectPublicKey(TestCase, SSHMixin):
 
         if "Overwrite" in pattern or "already exists" in pattern:
             logger.info("TC4: Key already exists, overwriting")
-            StepRunner([InputStep("tester", "y")]).run(context)
+            StepRunner([InputStep("tester", "y", capture_evidence=True)]).run(context)
             ExpectOneOfStep("tester", ["Your public key", "SHA256"], timeout=10).execute(context)
 
-        # Verify public key file is readable
+        StepRunner([ClearTerminalStep("tester")]).run(context)
+
         StepRunner([CommandStep("tester", f"cat {key_path}.pub", settle_time=2)]).run(context)
         ExpectOneOfStep("tester", ["ecdsa-sha2", "ssh-"], timeout=6).execute(context)
 
         ScreenshotStep("tester").execute(context)
+
+        StepRunner([ClearTerminalStep("tester")]).run(context)
+
+
         logger.info("TC4: ECDSA key pair generated")
 
     # ── export public key to DUT via SFTP ─────────────────────────────────
@@ -64,50 +71,93 @@ class TC4SSHCorrectPublicKey(TestCase, SSHMixin):
         expanded_path = os.path.expanduser(f"{key_path}.pub")
         remote_path   = context.profile.get("ssh.pubkey.sftp_remote_path", "id_ecdsaa.pub")
 
-        # SSHMixin handles the full SFTP session
         self.sftp_upload(context, expanded_path, remote_path)
 
         ScreenshotStep("tester").execute(context)
+
+        StepRunner([ClearTerminalStep("tester")]).run(context)
+
         logger.info("TC4: Public key exported to DUT")
 
-    # ── create the pubkey test user on the DUT ────────────────────────────
+    # ── create user + configure authorized_keys in ONE SSH session ─────────
 
-    def _create_user(self, context):
-        self.dut_create_local_user(
-            context,
-            username=context.profile.get("ssh.pubkey.dut_user",         "Test5"),
-            password=context.profile.get("ssh.pubkey.dut_user_password", "Test@1234"),
-            role=context.profile.get(    "ssh.pubkey.dut_user_role",     "network-operator"),
-            service_type="ssh",
-        )
-        ScreenshotStep("tester").execute(context)
-        logger.info("TC4: User '%s' created on DUT",
-                    context.profile.get("ssh.pubkey.dut_user", "Test5"))
+    def _setup_dut(self, context):
+        """
+        Open a single SSH session to the DUT, become root once, then run
+        both user-creation and authorized_keys configuration commands before
+        closing.  This replaces the two separate sessions that _create_user
+        and _configure_dut previously opened independently.
+        """
+        username    = context.profile.get("ssh.pubkey.dut_user",          "Test5")
+        password    = context.profile.get("ssh.pubkey.dut_user_password",  "Test@1234")
+        role        = context.profile.get("ssh.pubkey.dut_user_role",      "network-operator")
+        pubkey_name = context.profile.get("ssh.pubkey.dut_key_name",       "PUBBKEY")
 
-    # ── configure DUT to trust the public key ─────────────────────────────
-
-    def _configure_dut(self, context):
-        pubkey_name = context.profile.get("ssh.pubkey.dut_key_name", "PUBBKEY")
-        pubkey_user = context.profile.get("ssh.pubkey.dut_user",     "Test5")
-        commands    = context.profile.get_list("ssh.pubkey.configure_commands")
+        create_commands  = context.profile.get_list("user_mgmt.create_commands")
+        config_commands  = context.profile.get_list("ssh.pubkey.configure_commands")
 
         self.ssh_open_session(context)
-        self.ssh_run_formatted_commands(
-            context, commands,
-            fmt_kwargs={"dut_key_name": pubkey_name, "dut_user": pubkey_user},
+        self.ssh_become_root(context, root_password=context.ssh_password)
+
+        # ── user creation ──────────────────────────────────────────────────
+        self.ssh_run_commands(
+            context,
+            create_commands,
+            fmt_kwargs={
+                "username":     username,
+                "password":     password,
+                "role":         role,
+                "service_type": "ssh",
+            },
         )
+
         ScreenshotStep("tester").execute(context)
-        self.ssh_close_session(context)
-        logger.info("TC4: DUT configured with public key via profile commands")
+        StepRunner([ClearTerminalStep("tester")]).run(context)
+        logger.info("TC4: User '%s' created on DUT", username)
+
+        # ── authorized_keys configuration (same session, still root) ───────
+        self.ssh_run_formatted_commands(
+            context,
+            config_commands,
+            fmt_kwargs={
+                "dut_key_name": pubkey_name,
+                "dut_user":     username,
+                "ssh_user":     context.ssh_user,
+            },
+        )
+
+        ScreenshotStep("tester").execute(context)
+        StepRunner([ClearTerminalStep("tester")]).run(context)
+        logger.info("TC4: authorized_keys configured on DUT for user '%s'", username)
+
+        # ── single close (su shell + SSH shell) ───────────────────────────
+        self.ssh_close_session(context)   # exits su -
+        self.ssh_close_session(context)   # exits SSH
 
     # ── delete the pubkey test user from the DUT ──────────────────────────
 
-    def _delete_user(self, context):
-        self.dut_delete_local_user(
+    def _teardown_dut(self, context):
+        username        = context.profile.get("ssh.pubkey.dut_user", "Test5")
+        delete_commands = context.profile.get_list("user_mgmt.delete_commands")
+
+        StepRunner([ClearTerminalStep("tester")]).run(context)
+
+        self.ssh_open_session(context)
+        self.ssh_become_root(context, root_password=context.ssh_password)
+
+        self.ssh_run_commands(
             context,
-            username=context.profile.get("ssh.pubkey.dut_user", "Test5"),
+            delete_commands,
+            fmt_kwargs={"username": username},
         )
+
+        StepRunner([ClearTerminalStep("tester")]).run(context)
         ScreenshotStep("tester").execute(context)
+
+        self.ssh_close_session(context)   # exits su -
+        self.ssh_close_session(context)   # exits SSH
+
+        logger.info("TC4: User '%s' deleted from DUT", username)
 
     # ── attempt login with the correct public key ──────────────────────────
 
@@ -124,6 +174,7 @@ class TC4SSHCorrectPublicKey(TestCase, SSHMixin):
         )
 
         StepRunner([PcapStopStep()]).run(context)
+
         ScreenshotStep("tester").execute(context)
 
         if success:
@@ -131,13 +182,12 @@ class TC4SSHCorrectPublicKey(TestCase, SSHMixin):
             StepRunner([
                 AnalyzePcapStep("ssh"),
                 WiresharkPacketScreenshotStep("ssh"),
-                SessionResetStep("tester", post_reset_delay=2),
             ]).run(context)
+            CommandStep("tester", "exit", settle_time=4, capture_evidence=False)
+            
             return True
 
-        # Classify and log the failure layer
         self.log_ssh_failure(context, "TC4", pattern)
-        StepRunner([ClearTerminalStep("tester")]).run(context)
         return False
 
     # ── entry point ────────────────────────────────────────────────────────
@@ -145,13 +195,11 @@ class TC4SSHCorrectPublicKey(TestCase, SSHMixin):
     def run(self, context):
         self._generate_key(context)
         self._export_pubkey(context)
-        self._create_user(context)
-        self._configure_dut(context)
+        self._setup_dut(context)
         success = self._login_with_pubkey(context)
 
-        # Always clean up the test user regardless of pass/fail
         try:
-            self._delete_user(context)
+            self._teardown_dut(context)
         except Exception:
             logger.warning("TC4: Could not delete user '%s' during cleanup",
                            context.profile.get("ssh.pubkey.dut_user", "Test5"))

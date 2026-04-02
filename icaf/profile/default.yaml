@@ -25,7 +25,7 @@
 
 # ── SSH ───────────────────────────────────────────────────────────────────────
 ssh:
-  binary: ssh
+  base: ssh
   target: "{user}@{ip}"
 
   # Options appended to every ssh command built by TC3 / TC4 / TC5
@@ -53,6 +53,39 @@ ssh:
     - "Connection refused"
     - "No route to host"
 
+  error_classification:
+
+    transport:
+      - "No route to host"
+      - "Connection timed out"
+      - "Connection refused"
+      - "Could not resolve hostname"
+
+    negotiation:
+      - "no matching host key type"
+      - "Unable to negotiate"
+      - "kex_exchange_identification"
+      - "no matching cipher"
+      - "no matching key exchange"
+
+    authentication:
+      - "Permission denied"
+      - "Authentication failed"
+      - "publickey"
+      - "denied"
+
+    authorization:
+      - "not allowed"
+      - "no shell"
+      - "access denied"
+
+    command:
+      - "Unrecognized"
+      - "Invalid"
+      - "Error"
+      - "Incomplete"
+      - "Failure"
+
   # ── Credentials ────────────────────────────────────────────────────────
   # bad_password: deliberately wrong password used in TC3 negative case
   bad_password: "wrongpassword"
@@ -71,15 +104,25 @@ ssh:
     # Local user created on the DUT and bound to the public key
     dut_user: "Test5"
 
+    dut_user_password: "Test@1234"
+
+    configure_commands:
+      - "mkdir -p /home/{dut_user}/.ssh"
+      - "chmod 700 /home/{dut_user}/.ssh"
+      - "touch /home/{dut_user}/.ssh/authorized_keys"
+      - "chmod 600 /home/{dut_user}/.ssh/authorized_keys"
+      - "grep -qxF \"$(cat /home/{ssh_user}/id_ecdsaa.pub)\" /home/{dut_user}/.ssh/authorized_keys || cat /home/{ssh_user}/id_ecdsaa.pub >> /home/{dut_user}/.ssh/authorized_keys"
+      - "chown -R {dut_user}:{dut_user} /home/{dut_user}/.ssh"
+
   # ── Commands sent after login to verify/inspect session ────────────────
   commands:
     verify_login: "whoami"
-    ssh_server_status: "display ssh server status"
+    ssh_server_status: "systemctl status ssh"
     log_buffer: "display logbuffer"
 
   # ── DUT information commands (used by get_dut_info()) ──────────────────
   dut_info:
-    hostname_command: "hostname"
+    hostname_command: "cat /etc/os-release"
     os_release_command: "cat /etc/os-release"
     os_hash_command: "sha256sum /etc/os-release 2>/dev/null | awk '{print $1}'"
     config_hash_command: "sha256sum /etc/ssh/sshd_config 2>/dev/null | awk '{print $1}'"
@@ -154,7 +197,7 @@ web:
 
   # ── Credentials ────────────────────────────────────────────────────────
   username: "admin"
-  password: "Admin@123"        # correct password for TC6
+  password: "yourpassword"        # correct password for TC6
 
   # Wrong password used in TC7 negative case
   bad_password: "WrongAdmin@999!"
@@ -163,7 +206,7 @@ web:
   # These cover the WatchDog web UI.  Adjust if the DUT uses different names.
   user_field_selector:  "input[name='username'], #username, input[type='text']"
   pass_field_selector:  "input[name='password'], #password, input[type='password']"
-  submit_selector:      "button[type='submit'], input[type='submit'], .btn-login, input[name='Login']"
+  submit_selector:      "//button[contains(., 'Sign in')]"
 
   # ── Pattern lists (used by VerifyOutputStep) ───────────────────────────
   # Text that must appear on the page after a SUCCESSFUL login (TC6)
@@ -235,42 +278,12 @@ grpc:
 user_mgmt:
 
   create_commands:
-    # Enter system view
-    - "sys"
-
-    # Create user
-    - ["local-user {username} class manage", ["#", "new local"]]
-
-    # Set password
-    - ["password simple {password}", ["#", ">", "$"]]
-
-    # Assign role
-    - ["authorization-attribute user-role {role}", ["#", ">", "$"]]
-
-    # Enable SSH service
-    - ["service-type {service_type}", ["#", ">", "$"]]
-
-    # Exit config
-    - ["quit", ["#", ">", "$"]]
-
-    # Save config
-    - ["save force", ["saved", "#", "Y/N"]]
-
+    - ["useradd -m {username}", ["$", "#"]]
+    - ["echo '{username}:{password}' | sudo chpasswd", ["$", "#"]]
+    - ["usermod -aG sudo {username}", ["$", "#"]]
 
   delete_commands:
-    # Enter system view
-    - "sys"
-
-    # Delete user (with confirmation handling)
-    - ["undo local-user {username} class manage",
-        ["#", ">", "$", "Are you sure", "Y/N"]]
-
-    # Confirm deletion
-    - ["Y", ["#", ">", "$"]]
-
-    # Save config
-    - ["save force", ["saved", "#", "Y/N"]]
-
+    - ["userdel -r {username}", ["$", "#"]]
 
 features:
   snmp: true

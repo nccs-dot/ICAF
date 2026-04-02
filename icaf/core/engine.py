@@ -56,7 +56,7 @@ class Engine:
 
     def start(self):
 
-        logger.info("Starting TCAF engine")
+        logger.info("Starting ICAF engine")
         logger.info(f"Execution ID: {self.context.execution_id}")
 
         if self.context.clause:

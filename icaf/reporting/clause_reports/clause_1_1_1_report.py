@@ -1,13 +1,13 @@
 """
 reporting/clause_reports/clause_1_1_1_report.py
 ─────────────────────────────────────────────────────────────────────────────
-Report generator for ITSAR 1.1.1 — Management Protocols Entity Mutual Auth.
+Report generator for ITSAR 1.1.1 - Management Protocols Entity Mutual Auth.
 
 Everything that was previously hard-coded is now resolved from three sources:
 
   1. context.profile  (ProfileLoader)
        DUT IP, credentials, SNMP user/passwords, SSH key paths, gRPC port,
-       web login URL — all the per-device values the TCs use at runtime.
+       web login URL - all the per-device values the TCs use at runtime.
        The report builds the exact same commands the TCs ran, with the real
        DUT IP substituted in.
 
@@ -104,7 +104,7 @@ def _load_report_config() -> dict:
         with open(_REPORT_CONFIG_PATH, encoding="utf-8") as fh:
             return yaml.safe_load(fh) or {}
     logger.warning(
-        "report_config.yaml not found at %s — using built-in defaults",
+        "report_config.yaml not found at %s - using built-in defaults",
         _REPORT_CONFIG_PATH,
     )
     return {}
@@ -170,7 +170,7 @@ class CommandRenderer:
     Builds per-TC CLI step lists with real DUT IP, usernames, and (optionally)
     passwords from context.profile and the RuntimeContext.
 
-    Each public method returns list[str] — one string per step shown in the
+    Each public method returns list[str] - one string per step shown in the
     report's "b. Execution Steps" section.
     """
 
@@ -301,12 +301,12 @@ class CommandRenderer:
             f"Verify SSH is reachable on the DUT:  {self._ssh_cmd()}",
             "Verify SSH server version via DUT command:  display ssh server status",
             f"Enumerate SSH cipher suites:  {nmap_cmd}",
-            f"Positive case — authenticate with correct credentials: "
+            f"Positive case - authenticate with correct credentials: "
             f"username={self.ssh_user}  password={_redact(self.ssh_password)}; "
             "confirm session establishment.",
             "Capture SSH handshake in Wireshark; verify key-exchange "
             "(diffie-hellman-group14-sha256) and encryption (aes128-ctr) algorithms.",
-            f"Negative case — attempt SSH login with wrong password "
+            f"Negative case - attempt SSH login with wrong password "
             f"({_redact(bad_password)}); confirm 'Permission denied' is returned.",
             "Capture negative-case packets in Wireshark; verify traffic "
             "remains encrypted and no sensitive data is disclosed.",
@@ -382,7 +382,7 @@ class CommandRenderer:
         tls11_cmd = tls11_raw.format(ip=self.ip)
         return [
             f"Open web browser and navigate to the DUT login page:  {login_url}",
-            f"Enter valid admin credentials — username: {username}  "
+            f"Enter valid admin credentials - username: {username}  "
             f"password: {_redact(password)}",
             "Verify the management dashboard is displayed "
             "(System Information page confirming authenticated access).",
@@ -403,7 +403,7 @@ class CommandRenderer:
         bad_pass  = self._p("web.bad_password", "WrongAdmin")
         return [
             f"Open web browser and navigate to:  {login_url}",
-            f"Enter incorrect credentials — username: {username}  "
+            f"Enter incorrect credentials - username: {username}  "
             f"password: {_redact(bad_pass)}",
             "Observe DUT displays 'Failed to log in' error and no "
             "management access is granted.",
@@ -446,11 +446,11 @@ class CommandRenderer:
             f"→  grpc enable  →  grpc port {port}",
             f"Create DUT user {dut_user} with password {_redact(dut_pass)} "
             "and network-admin role.",
-            f"Positive — run grpcurl with valid credentials; "
+            f"Positive - run grpcurl with valid credentials; "
             f"verify token_id is returned:  {grpcurl_ok}",
             "Capture gRPC traffic in Wireshark; verify TLS handshake and "
             "encrypted application data.",
-            f"Negative — run grpcurl with incorrect password; "
+            f"Negative - run grpcurl with incorrect password; "
             f"verify no token_id is returned:  {grpcurl_bad}",
             "Capture negative-case traffic in Wireshark; confirm TLS "
             "encryption is maintained throughout.",
@@ -461,7 +461,7 @@ class CommandRenderer:
     def steps_for(self, canonical: str) -> list[str]:
         """
         Return the dynamically-rendered step list for a TC canonical name.
-        Returns [] if the TC is not mapped — caller falls back to YAML.
+        Returns [] if the TC is not mapped - caller falls back to YAML.
         """
         mapping = {
             "TC1_SNMPV3_POSITIVE":            self.tc1_steps,
@@ -480,7 +480,7 @@ class CommandRenderer:
             return fn()
         except Exception as exc:  # noqa: BLE001
             logger.warning(
-                "CommandRenderer.steps_for(%s) raised %s — falling back to YAML steps",
+                "CommandRenderer.steps_for(%s) raised %s - falling back to YAML steps",
                 canonical, exc,
             )
             return []
@@ -563,9 +563,9 @@ def _default_observation(tc_name: str, status: str) -> str:
 
 def _default_conclusion(tc_name: str, status: str) -> str:
     if status == _PASS:
-        return f"The DUT satisfied the security requirement for {tc_name} — COMPLIANT."
+        return f"The DUT satisfied the security requirement for {tc_name} - COMPLIANT."
     if status == _FAIL:
-        return f"The DUT did not satisfy the security requirement for {tc_name} — NON-COMPLIANT."
+        return f"The DUT did not satisfy the security requirement for {tc_name} - NON-COMPLIANT."
     return "N/A"
 
 
@@ -574,7 +574,7 @@ def _default_remark(tc_name: str, status: str) -> str:
         return f"The DUT correctly enforced the security requirement for {tc_name}."
     if status == _FAIL:
         return f"The DUT failed to satisfy the security requirement for {tc_name}."
-    return "N/A — Test case was not executed."
+    return "N/A - Test case was not executed."
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -612,7 +612,7 @@ def _ai_enrich_observation(
         - Integrate only evidence details that genuinely add value.
         - Do NOT invent details not present in the evidence.
         - Use formal third-person technical language; no "I" or "we".
-        - Respond with the enriched observation text ONLY — no JSON, no fences.
+        - Respond with the enriched observation text ONLY - no JSON, no fences.
     """).strip()
 
     user_prompt = textwrap.dedent(f"""
@@ -657,63 +657,9 @@ def _ai_enrich_observation(
             return enriched
     except Exception as exc:  # noqa: BLE001
         logger.warning(
-            "AI enrichment failed for %s (%s) — using base text", tc_name, exc
+            "AI enrichment failed for %s (%s) - using base text", tc_name, exc
         )
     return base_observation
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# OCR block: Observation / Conclusion / Remark — styled 3-row table
-# ─────────────────────────────────────────────────────────────────────────────
-
-def _ocr_block(
-    doc: Any,
-    status: str,
-    observation: str,
-    conclusion: str,
-    remark: str,
-) -> None:
-    from docx.enum.table import WD_TABLE_ALIGNMENT
-
-    sk = status.upper()
-    bg_hex, border_hex, accent_rgb = _ACCENT.get(sk, _ACCENT[_NOT_RUN])
-
-    rows_data = [
-        ("Test Observation", observation),
-        ("Test Conclusion",  conclusion),
-        ("Remark",           remark),
-    ]
-
-    accent_w  = 100
-    label_w   = 1700
-    content_w = 7560
-
-    table = doc.add_table(rows=0, cols=3)
-    table.alignment = WD_TABLE_ALIGNMENT.LEFT
-    _set_table_width(table, accent_w + label_w + content_w)
-    _set_col_widths(table, [accent_w, label_w, content_w])
-
-    for i, (label, content) in enumerate(rows_data):
-        row    = table.add_row()
-        row_bg = "FFFFFF" if i % 2 == 0 else "FAFAFA"
-
-        # Colour-coded accent strip
-        acc = row.cells[0]
-        _style_cell(acc, bg_hex, border_hex, accent_w,
-                    top=60, bottom=60, left=0, right=0)
-        _para_in_cell(acc, "", bold=False)
-
-        # Label column
-        lbl = row.cells[1]
-        _style_cell(lbl, "F3ECF9", HEX_PURPLE, label_w,
-                    top=80, bottom=80, left=120, right=80)
-        _para_in_cell(lbl, label, bold=True, color=PURPLE, size_pt=9)
-
-        # Content column
-        cnt = row.cells[2]
-        _style_cell(cnt, row_bg, "DDDDDD", content_w,
-                    top=80, bottom=80, left=140, right=120)
-        _para_in_cell(cnt, content, bold=False, color=DARK_GREY, size_pt=9.5)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -874,7 +820,7 @@ class Clause111Report:
                     spec_tc, "conclusion", _NOT_RUN, "N/A")
                 self._tc_remark[canonical] = _pick_status_text(
                     spec_tc, "remarks", _NOT_RUN,
-                    "N/A — Test case was not executed in this evaluation run.")
+                    "N/A - Test case was not executed in this evaluation run.")
 
     # ── helpers ───────────────────────────────────────────────────────────
 
@@ -888,7 +834,7 @@ class Clause111Report:
             return self._runner_to_canonical[runner_name]
         if position < len(self._canonical_ordered):
             logger.warning(
-                "Runner name '%s' not in spec — using position fallback "
+                "Runner name '%s' not in spec - using position fallback "
                 "(slot %d → %s)",
                 runner_name, position, self._canonical_ordered[position],
             )
@@ -909,7 +855,7 @@ class Clause111Report:
                 {"version": "V.1.0", "date": "Initial Release",
                  "description": "NCCS Approved Test Plan with initial Test Cases."},
                 {"version": "V.1.1", "date": "auto",
-                 "description": "First Release of Test Report — automated evidence collected."},
+                 "description": "First Release of Test Report - automated evidence collected."},
             ]
         data_rows = []
         for e in entries:
@@ -1089,7 +1035,7 @@ class Clause111Report:
             body_para(doc, desc or "No description available.")
             spacer(doc)
 
-            # b. Execution steps — dynamic commands preferred, YAML fallback
+            # b. Execution steps - dynamic commands preferred, YAML fallback
             dynamic_steps = self._cmdr.steps_for(canonical)
             steps_to_render = dynamic_steps if dynamic_steps else spec.get("steps", [])
             if steps_to_render:
@@ -1126,7 +1072,7 @@ class Clause111Report:
                         if clean_path:
                             body_para(
                                 doc,
-                                f"Evidence Screenshot — "
+                                f"Evidence Screenshot - "
                                 f"{os.path.basename(clean_path)}",
                                 bold=True,
                             )
@@ -1142,16 +1088,22 @@ class Clause111Report:
                             )
                 spacer(doc)
 
-            # d. OCR block
-            sub_heading(doc, "d. Test Observations, Conclusion & Remark:")
+            # d. Test Observation
+            sub_heading(doc, "d. Test Observation:")
             spacer(doc, small=True)
-            _ocr_block(
-                doc,
-                status      = status,
-                observation = self._tc_observation.get(canonical, "N/A"),
-                conclusion  = self._tc_conclusion.get(canonical,  "N/A"),
-                remark      = self._tc_remark.get(canonical,      "N/A"),
-            )
+            body_para(doc, self._tc_observation.get(canonical, "N/A"))
+            spacer(doc, small=True)
+
+            # e. Conclusion
+            sub_heading(doc, "e. Conclusion:")
+            spacer(doc, small=True)
+            body_para(doc, self._tc_conclusion.get(canonical, "N/A"))
+            spacer(doc, small=True)
+
+            # f. Remark
+            sub_heading(doc, "f. Remark:")
+            spacer(doc, small=True)
+            body_para(doc, self._tc_remark.get(canonical, "N/A"))
             spacer(doc, small=True)
 
             # e. Evidence statement
@@ -1284,14 +1236,14 @@ class Clause111Report:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Dynamic front page — uses report_config.yaml metadata
+# Dynamic front page - uses report_config.yaml metadata
 # ─────────────────────────────────────────────────────────────────────────────
 
 def _build_front_page_dynamic(doc: Any, meta: dict) -> None:
     """
     Front page built entirely from the enriched meta dict.
     Reviewer names, approver, doc number all come from report_config.yaml
-    via the meta dict — nothing is hard-coded here.
+    via the meta dict - nothing is hard-coded here.
     """
     from docx.enum.text import WD_ALIGN_PARAGRAPH
     from icaf.reporting.helpers import (

@@ -36,17 +36,17 @@ class SSHMixin:
     def _build_ssh_cmd(self, context, *, extra_flags: list[str] | None = None) -> str:
         """
         Build the SSH command from profile keys:
-            ssh.binary          (default "ssh")
+            ssh.base          (default "ssh")
             ssh.connect_options (list)
             ssh.target          (template "{user}@{ip}")
         Optional *extra_flags* are inserted between the options and the target.
         """
-        binary  = context.profile.get("ssh.binary", "ssh")
+        base  = context.profile.get("ssh.base", "ssh")
         options = context.profile.get_list("ssh.connect_options")
         target  = context.profile.get("ssh.target", "{user}@{ip}").format(
             user=context.ssh_user, ip=context.ssh_ip
         )
-        parts = [binary] + options + (extra_flags or []) + [target]
+        parts = [base] + options + (extra_flags or []) + [target]
         return " ".join(parts)
 
     def _build_sftp_cmd(self, context) -> str:
@@ -96,41 +96,93 @@ class SSHMixin:
         StepRunner([SessionResetStep("tester", post_reset_delay=post_reset_delay)]).run(context)
         logger.debug("SSHMixin: session closed")
 
+    def ssh_become_root(
+        self,
+        context,
+        *,
+        root_password: str,
+        timeout: int = 10,
+    ):
+        """
+        Escalate privileges using 'su -' and switch to root shell.
+        """
+
+        logger.debug("SSHMixin: escalating to root using su -")
+
+        # Run su -
+        StepRunner([CommandStep("tester", "sudo su -", capture_evidence=False)]).run(context)
+
+        # Wait for password prompt
+        ExpectOneOfStep(
+            "tester",
+            ["Password", "password"],
+            timeout=timeout,
+        ).execute(context)
+
+        # Send root password
+        StepRunner([InputStep("tester", root_password)]).run(context)
+        
+
+        # Wait for root shell OR failure
+        pattern, _ = ExpectOneOfStep(
+            "tester",
+            self._get_shell_prompts(context) + ["Authentication failure", "su: Authentication failure"],
+            timeout=timeout,
+        ).execute(context)
+
+        if "failure" in pattern.lower():
+            raise Exception("Failed to escalate to root via su -")
+
+        logger.debug("SSHMixin: now running as root")
+
     # ── command execution ─────────────────────────────────────────────────
 
     def ssh_run_commands(
         self,
         context,
-        commands: list[str | tuple[str, list[str]]],
+        commands,
         *,
+        fmt_kwargs: dict | None = None,
         settle_time: int = 2,
         timeout: int = 10,
-    ) -> None:
-        """
-        Execute a list of commands on an already-open SSH session.
-
-        Each element can be:
-          • a plain string  → command; shell prompt expected after
-          • a (cmd, [expected_patterns]) tuple → command with custom expected list
-
-        Example::
-
-            self.ssh_run_commands(context, [
-                "sys",
-                ("display ssh server status", ["SSH version", "#"]),
-                "save force",
-            ])
-        """
+        terminal: str = "tester",          # ← new param
+    ):
         shell_p = self._get_shell_prompts(context)
 
+        error_patterns = (
+            context.profile.get("ssh.error_classification.transport", []) +
+            context.profile.get("ssh.error_classification.negotiation", []) +
+            context.profile.get("ssh.error_classification.authentication", []) +
+            context.profile.get("ssh.error_classification.authorization", []) +
+            context.profile.get("ssh.error_classification.command", []) +
+            ["Error", "error", "Invalid", "Unrecognized", "Failed", "Incomplete", "command not found"]
+        )
+
         for item in commands:
-            if isinstance(item, tuple):
+            if isinstance(item, (tuple, list)):
                 cmd, expected = item
             else:
                 cmd, expected = item, shell_p
 
-            StepRunner([CommandStep("tester", cmd, settle_time=settle_time)]).run(context)
-            ExpectOneOfStep("tester", expected, timeout=timeout).execute(context)
+            if fmt_kwargs:
+                cmd = cmd.format(**fmt_kwargs)
+
+            logger.debug(f"SSHMixin: executing → {cmd}")
+
+            StepRunner([CommandStep(terminal, cmd, settle_time=settle_time, capture_evidence=False)]).run(context)
+
+            patterns = expected + error_patterns
+
+            pattern, _ = ExpectOneOfStep(
+                terminal,
+                patterns,
+                timeout=timeout,
+            ).execute(context)
+
+            if any(err.lower() in pattern.lower() for err in error_patterns):
+                logger.error(f"SSH command failed → {cmd} → {pattern}")
+                raise Exception(f"Command failed on DUT: {cmd} → {pattern}")
+
 
     def ssh_run_formatted_commands(
         self,
@@ -140,22 +192,17 @@ class SSHMixin:
         *,
         settle_time: int = 2,
         timeout: int = 10,
+        terminal: str = "tester",          # ← new param
     ) -> None:
-        """
-        Like ssh_run_commands but calls str.format(**fmt_kwargs) on each
-        command string before sending.  Useful for profile-driven command
-        lists that contain placeholders such as {dut_key_name}.
-        """
         shell_p = self._get_shell_prompts(context)
         for cmd in commands:
             formatted = cmd.format(**fmt_kwargs)
-            StepRunner([CommandStep("tester", formatted, settle_time=settle_time)]).run(context)
+            StepRunner([CommandStep(terminal, formatted, settle_time=settle_time)]).run(context)
             ExpectOneOfStep(
-                "tester",
+                terminal,
                 shell_p + ["successfully", "overwrite", "saved", "Y/N"],
                 timeout=timeout,
             ).execute(context)
-
     # ── pubkey SSH ────────────────────────────────────────────────────────
 
     def ssh_open_pubkey_session(
@@ -203,8 +250,8 @@ class SSHMixin:
         """
         options = context.profile.get_list("ssh.connect_options")
         extra   = ["-o", "IdentitiesOnly=yes", "-i", key_path]
-        binary  = context.profile.get("ssh.binary", "ssh")
-        ssh_cmd = " ".join([binary] + options + extra + [f"{remote_user}@{context.ssh_ip}"])
+        base  = context.profile.get("ssh.base", "ssh")
+        ssh_cmd = " ".join([base] + options + extra + [f"{remote_user}@{context.ssh_ip}"])
  
         success_p  = context.profile.get_list("ssh.success_prompt") or ["#", "$", ">", "sys"]
         pass_p     = self._get_password_prompts(context)
@@ -327,7 +374,13 @@ class SSHMixin:
 
         self.ssh_open_session(context)
 
-        self.ssh_run_formatted_commands(
+        # NEW: become root
+        self.ssh_become_root(
+            context,
+            root_password=context.ssh_password
+        )
+
+        self.ssh_run_commands(
             context,
             commands,
             fmt_kwargs={
@@ -338,6 +391,7 @@ class SSHMixin:
             },
         )
 
+        self.ssh_close_session(context)
         self.ssh_close_session(context)
 
         logger.info("SSHMixin: local user '%s' created on DUT", username)
@@ -352,7 +406,13 @@ class SSHMixin:
 
         self.ssh_open_session(context)
 
-        self.ssh_run_formatted_commands(
+        # become root
+        self.ssh_become_root(
+            context,
+            root_password=context.ssh_password
+        )
+
+        self.ssh_run_commands(
             context,
             commands,
             fmt_kwargs={
@@ -360,6 +420,7 @@ class SSHMixin:
             },
         )
 
+        self.ssh_close_session(context)
         self.ssh_close_session(context)
 
         logger.info("SSHMixin: local user '%s' deleted from DUT", username)

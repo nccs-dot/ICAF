@@ -28,22 +28,19 @@ class TC6HTTPSValidLogin(TestCase):
         )
 
     def run(self, context):
-        raw_url = context.profile.get("web.login_url", context.web_login_url)
+        raw_url = context.web_login_url
 
-        ip = getattr(context, "ssh_ip", None) or getattr(context, "ip", None)
-
-        if not ip:
-            raise ValueError("No IP found in context (ssh_ip/ip)")
-
-        login_url = raw_url.format(ip=ip)
+        login_url = raw_url
         username   = context.profile.get("web.username",   context.web_username)
         password   = context.profile.get("web.password",   context.web_password)
         user_sel   = context.profile.get("web.user_field_selector",
                                          "input[name='username'], #username")
         pass_sel   = context.profile.get("web.pass_field_selector",
                                          "input[name='password'], #password, input[type='password']")
-        submit_sel = context.profile.get("web.submit_selector",
-                                         "button[type='submit'], input[type='submit'], .btn-login")
+        submit_sel = context.profile.get(
+            "web.submit_selector",
+            "//button[contains(., 'Sign in')]"
+        )
         dashboard_indicators = [
             s.strip() for s in context.profile.get(
                 "web.dashboard_indicator",

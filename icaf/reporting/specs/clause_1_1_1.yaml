@@ -1,5 +1,5 @@
 # ─────────────────────────────────────────────────────────────────────────────
-# ITSAR Clause Spec — 1.1.1 Management Protocols Entity Mutual Authentication
+# ITSAR Clause Spec - 1.1.1 Management Protocols Entity Mutual Authentication
 # DUT: WatchDog Router WD4520-X1 | OEM: Apollo Infoways Private Limited
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -88,7 +88,7 @@ testcases:
 
   TC1_SNMPV3_POSITIVE:
     runner_name: "TC1_SNMPV3_POSITIVE"
-    scenario: "Test Scenario 1.1.1 — Positive: Configure and verify SNMPv3 protocol mutual authentication."
+    scenario: "Test Scenario 1.1.1 - Positive: Configure and verify SNMPv3 protocol mutual authentication."
     description: >
       This test case verifies that SNMPv3 is correctly configured on the DUT
       and that mutual authentication between the SNMP manager and SNMP agent
@@ -118,7 +118,7 @@ testcases:
       The DUT correctly enforces SNMPv3-only access with mandatory SHA
       authentication and AES-128 privacy encryption, meeting ITSAR 1.1.1
       requirements.
-    remarks_pass: "DUT enforces SNMPv3 security policies, supports mutual authentication, and blocks weak cryptographic algorithms — COMPLIANT."
+    remarks_pass: "DUT enforces SNMPv3 security policies, supports mutual authentication, and blocks weak cryptographic algorithms - COMPLIANT."
     observation_fail: >
       During testing, it was observed that the DUT responded to SNMPv1 and/or
       SNMPv2c requests, indicating that legacy insecure SNMP protocol versions
@@ -131,14 +131,14 @@ testcases:
       The DUT failed the SNMPv3 mutual authentication test due to the presence
       of active SNMPv1/v2c support. This constitutes a non-compliance with
       ITSAR 1.1.1.
-    remarks_fail: "SNMPv1 and/or SNMPv2c are supported on the DUT — insecure protocol versions must be disabled to achieve compliance."
+    remarks_fail: "SNMPv1 and/or SNMPv2c are supported on the DUT - insecure protocol versions must be disabled to achieve compliance."
     observation_not_run: "N/A"
     conclusion_not_run: "N/A"
-    remarks_not_run: "N/A — Test case was not executed in this evaluation run."
+    remarks_not_run: "N/A - Test case was not executed in this evaluation run."
 
   TC2_SNMPV3_INVALID_CREDENTIALS:
     runner_name: "TC2_SNMPV3_INVALID_CREDENTIALS"
-    scenario: "Test Scenario 1.1.1.2 — Negative: Verify SNMPv3 login with incorrect credentials and verify response by DUT."
+    scenario: "Test Scenario 1.1.1.2 - Negative: Verify SNMPv3 login with incorrect credentials and verify response by DUT."
     description: >
       This test case verifies that the DUT does not allow SNMPv3 access when
       incorrect login credentials are used. The purpose is to confirm that
@@ -160,8 +160,8 @@ testcases:
     conclusion_pass: >
       The DUT correctly rejects SNMPv3 requests bearing invalid credentials,
       maintaining encrypted communication and disclosing no sensitive information
-      — fully compliant with ITSAR 1.1.1.
-    remarks_pass: "Unauthorized SNMP access attempts are correctly detected and denied by the DUT — COMPLIANT."
+      - fully compliant with ITSAR 1.1.1.
+    remarks_pass: "Unauthorized SNMP access attempts are correctly detected and denied by the DUT - COMPLIANT."
     observation_fail: >
       The DUT was observed to process or partially respond to SNMPv3 requests
       submitted with incorrect credentials, indicating a failure in the
@@ -173,14 +173,14 @@ testcases:
       The DUT failed to consistently reject SNMPv3 access attempts with invalid
       credentials, representing a non-compliance with ITSAR 1.1.1 authentication
       requirements.
-    remarks_fail: "DUT responded to SNMPv3 requests with incorrect credentials — authentication enforcement is insufficient."
+    remarks_fail: "DUT responded to SNMPv3 requests with incorrect credentials - authentication enforcement is insufficient."
     observation_not_run: "N/A"
     conclusion_not_run: "N/A"
-    remarks_not_run: "N/A — Test case was not executed in this evaluation run."
+    remarks_not_run: "N/A - Test case was not executed in this evaluation run."
 
   TC3_SSH_MUTUAL_AUTH:
     runner_name: "TC3_SSH_MUTUAL_AUTH"
-    scenario: "Test Scenario 1.1.1.3 — Configure and verify successful and unsuccessful mutual authentication over SSH."
+    scenario: "Test Scenario 1.1.1.3 - Configure and verify successful and unsuccessful mutual authentication over SSH."
     description: >
       This test case verifies that the DUT supports SSH v2 mutual authentication
       for management access. In the positive case, valid admin credentials
@@ -209,8 +209,8 @@ testcases:
     conclusion_pass: >
       The DUT supports robust SSHv2 mutual authentication with approved
       cryptographic algorithms and correctly denies access on invalid credentials
-      without information leakage — COMPLIANT with ITSAR 1.1.1.
-    remarks_pass: "The DUT supports secure SSH mutual authentication and prevents information leakage during failed authentication attempts — COMPLIANT."
+      without information leakage - COMPLIANT with ITSAR 1.1.1.
+    remarks_pass: "The DUT supports secure SSH mutual authentication and prevents information leakage during failed authentication attempts - COMPLIANT."
     observation_fail: >
       During SSH authentication testing, deviations from expected behaviour
       were identified. Either the DUT failed to reject invalid credentials
@@ -224,14 +224,14 @@ testcases:
       requirements. Deficiencies were noted in either credential validation,
       cipher suite enforcement, or information disclosure during failed
       authentication.
-    remarks_fail: "SSH authentication enforcement is deficient — weak algorithms or credential bypass observed; non-compliant."
+    remarks_fail: "SSH authentication enforcement is deficient - weak algorithms or credential bypass observed; non-compliant."
     observation_not_run: "N/A"
     conclusion_not_run: "N/A"
-    remarks_not_run: "N/A — Test case was not executed in this evaluation run."
+    remarks_not_run: "N/A - Test case was not executed in this evaluation run."
 
   TC4_SSH_CORRECT_PUBLIC_KEY:
     runner_name: "TC4_SSH_CORRECT_PUBLIC_KEY"
-    scenario: "Test Scenario 1.1.1.4 — Configure and verify SSH login using the correct public key."
+    scenario: "Test Scenario 1.1.1.4 - Configure and verify SSH login using the correct public key."
     description: >
       This test case verifies that the DUT correctly supports SSH login using
       public key authentication. When a valid ECDSA key pair is configured on
@@ -260,8 +260,8 @@ testcases:
     conclusion_pass: >
       The DUT correctly supports and enforces SSH public key mutual
       authentication, permitting access only when a registered client key is
-      presented — COMPLIANT with ITSAR 1.1.1.
-    remarks_pass: "Public key-based SSH authentication is correctly supported and enforced by the DUT — COMPLIANT."
+      presented - COMPLIANT with ITSAR 1.1.1.
+    remarks_pass: "Public key-based SSH authentication is correctly supported and enforced by the DUT - COMPLIANT."
     observation_fail: >
       Public key-based SSH authentication did not function as required. The DUT
       either failed to accept a validly registered ECDSA key pair, fell back to
@@ -273,14 +273,14 @@ testcases:
     conclusion_fail: >
       The DUT failed to support correct SSH public key authentication, which is
       a mandatory component of mutual authentication under ITSAR 1.1.1.
-    remarks_fail: "SSH public key authentication did not function correctly — key acceptance failure observed; non-compliant."
+    remarks_fail: "SSH public key authentication did not function correctly - key acceptance failure observed; non-compliant."
     observation_not_run: "N/A"
     conclusion_not_run: "N/A"
-    remarks_not_run: "N/A — Test case was not executed in this evaluation run."
+    remarks_not_run: "N/A - Test case was not executed in this evaluation run."
 
   TC5_SSH_INCORRECT_PUBLIC_KEY:
     runner_name: "TC5_SSH_INCORRECT_PUBLIC_KEY"
-    scenario: "Test Scenario 1.1.1.5 — Configure and verify SSH login using the incorrect public key."
+    scenario: "Test Scenario 1.1.1.5 - Configure and verify SSH login using the incorrect public key."
     description: >
       This test case verifies that the DUT does not allow SSH access when an
       unregistered (wrong) public key is used. The connection must be closed
@@ -304,8 +304,8 @@ testcases:
     conclusion_pass: >
       The DUT effectively blocks SSH access attempts using untrusted or
       unregistered public keys, demonstrating correct enforcement of public key
-      mutual authentication — COMPLIANT with ITSAR 1.1.1.
-    remarks_pass: "The DUT effectively blocks unauthorized SSH access attempts using invalid keys — COMPLIANT."
+      mutual authentication - COMPLIANT with ITSAR 1.1.1.
+    remarks_pass: "The DUT effectively blocks unauthorized SSH access attempts using invalid keys - COMPLIANT."
     observation_fail: >
       The DUT was observed to grant or partially allow an SSH session initiated
       with an unregistered public key. This represents a critical failure in
@@ -314,17 +314,17 @@ testcases:
       This behaviour could allow an adversary to gain management access to
       the device without authorisation.
     conclusion_fail: >
-      The DUT failed to reject SSH access using an incorrect public key —
+      The DUT failed to reject SSH access using an incorrect public key -
       a critical non-compliance with ITSAR 1.1.1 that must be remediated
       immediately.
-    remarks_fail: "SSH access was granted or not properly denied for an unregistered public key — critical non-compliance."
+    remarks_fail: "SSH access was granted or not properly denied for an unregistered public key - critical non-compliance."
     observation_not_run: "N/A"
     conclusion_not_run: "N/A"
-    remarks_not_run: "N/A — Test case was not executed in this evaluation run."
+    remarks_not_run: "N/A - Test case was not executed in this evaluation run."
 
   TC6_HTTPS_VALID_LOGIN:
     runner_name: "TC6_HTTPS_VALID_LOGIN"
-    scenario: "Test Scenario 1.1.1.6 — Configure and verify successful mutual authentication over HTTPS."
+    scenario: "Test Scenario 1.1.1.6 - Configure and verify successful mutual authentication over HTTPS."
     description: >
       This test case verifies that the DUT correctly supports and enforces
       successful mutual authentication (client certificate authentication)
@@ -347,9 +347,9 @@ testcases:
       transport security requirements.
     conclusion_pass: >
       HTTPS mutual authentication over TLS is correctly implemented on the DUT,
-      granting management access only upon valid credential submission —
+      granting management access only upon valid credential submission -
       COMPLIANT with ITSAR 1.1.1.
-    remarks_pass: "The DUT provides secure HTTPS access with encrypted transport and proper authentication enforcement — COMPLIANT."
+    remarks_pass: "The DUT provides secure HTTPS access with encrypted transport and proper authentication enforcement - COMPLIANT."
     observation_fail: >
       The DUT did not correctly establish an HTTPS management session with valid
       credentials, or the TLS handshake analysis revealed a non-compliant
@@ -359,15 +359,15 @@ testcases:
       meet ITSAR security requirements.
     conclusion_fail: >
       HTTPS management access either failed for valid credentials or utilised
-      non-compliant TLS parameters — non-compliant with ITSAR 1.1.1.
+      non-compliant TLS parameters - non-compliant with ITSAR 1.1.1.
     remarks_fail: "HTTPS authentication or TLS configuration is non-compliant; valid login failed or insecure TLS version in use."
     observation_not_run: "N/A"
     conclusion_not_run: "N/A"
-    remarks_not_run: "N/A — Test case was not executed in this evaluation run."
+    remarks_not_run: "N/A - Test case was not executed in this evaluation run."
 
   TC7_HTTPS_INVALID_LOGIN:
     runner_name: "TC7_HTTPS_INVALID_LOGIN"
-    scenario: "Test Scenario 1.1.1.7 — Configure and verify unsuccessful mutual authentication over HTTPS."
+    scenario: "Test Scenario 1.1.1.7 - Configure and verify unsuccessful mutual authentication over HTTPS."
     description: >
       This test case verifies that the DUT does not allow HTTPS management
       access when incorrect admin credentials are entered. The browser must
@@ -388,9 +388,9 @@ testcases:
       failed authentication attempt, and no sensitive device data was disclosed.
     conclusion_pass: >
       The DUT correctly rejects HTTPS management access on invalid credentials,
-      maintaining TLS encryption and not exposing sensitive information —
+      maintaining TLS encryption and not exposing sensitive information -
       COMPLIANT with ITSAR 1.1.1.
-    remarks_pass: "Unauthorized HTTPS access attempts are properly blocked without compromising data confidentiality — COMPLIANT."
+    remarks_pass: "Unauthorized HTTPS access attempts are properly blocked without compromising data confidentiality - COMPLIANT."
     observation_fail: >
       The DUT failed to consistently deny HTTPS management access when incorrect
       credentials were supplied. Either a partial management interface was
@@ -399,17 +399,17 @@ testcases:
       authentication exchange. These observations indicate deficiencies in the
       HTTPS authentication and session management logic.
     conclusion_fail: >
-      The DUT's HTTPS authentication rejection mechanism is deficient — access
+      The DUT's HTTPS authentication rejection mechanism is deficient - access
       was not properly denied or sensitive information was disclosed on failed
-      login — non-compliant with ITSAR 1.1.1.
-    remarks_fail: "HTTPS incorrect credential handling is deficient — management data may be partially accessible or disclosed."
+      login - non-compliant with ITSAR 1.1.1.
+    remarks_fail: "HTTPS incorrect credential handling is deficient - management data may be partially accessible or disclosed."
     observation_not_run: "N/A"
     conclusion_not_run: "N/A"
-    remarks_not_run: "N/A — Test case was not executed in this evaluation run."
+    remarks_not_run: "N/A - Test case was not executed in this evaluation run."
 
   TC8_GRPC_GNMI_MUTUAL_AUTH:
     runner_name: "TC8_GRPC_GNMI_MUTUAL_AUTH"
-    scenario: "Test Scenario 1.1.1.8 — Configure and verify mutual authentication over gRPC/gNMI."
+    scenario: "Test Scenario 1.1.1.8 - Configure and verify mutual authentication over gRPC/gNMI."
     description: >
       This test case verifies that the DUT supports and enforces mutual
       authentication over gRPC/gNMI communication. The DUT shall establish a
@@ -442,8 +442,8 @@ testcases:
     conclusion_pass: >
       The DUT enforces certificate-based and credential-based mutual
       authentication for gRPC/gNMI management, permitting access only on
-      full verification — COMPLIANT with ITSAR 1.1.1.
-    remarks_pass: "The DUT enforces certificate-based and user-based authentication and blocks unauthorized gRPC/gNMI access — COMPLIANT."
+      full verification - COMPLIANT with ITSAR 1.1.1.
+    remarks_pass: "The DUT enforces certificate-based and user-based authentication and blocks unauthorized gRPC/gNMI access - COMPLIANT."
     observation_fail: >
       During gRPC/gNMI testing, the DUT failed to correctly enforce mutual
       authentication requirements. Either a token_id was issued without valid
@@ -453,13 +453,13 @@ testcases:
       failure in the gRPC/gNMI authentication enforcement mechanism that does
       not meet ITSAR 1.1.1 requirements.
     conclusion_fail: >
-      gRPC/gNMI mutual authentication enforcement is deficient on the DUT —
+      gRPC/gNMI mutual authentication enforcement is deficient on the DUT -
       access was granted without full certificate and credential verification;
       non-compliant with ITSAR 1.1.1.
-    remarks_fail: "gRPC/gNMI authentication is non-compliant — session token issued without valid certificate or credentials."
+    remarks_fail: "gRPC/gNMI authentication is non-compliant - session token issued without valid certificate or credentials."
     observation_not_run: "N/A"
     conclusion_not_run: "N/A"
-    remarks_not_run: "N/A — Test case was not executed in this evaluation run."
+    remarks_not_run: "N/A - Test case was not executed in this evaluation run."
 
 conclusion_bullets:
   - "The DUT was successfully configured for SNMPv3 with authentication and privacy enabled. SNMPv1 and SNMPv2c were found to be disabled by default, which aligns with ITSAR security requirements. SNMPv3 communication was established only when correct credentials and approved cryptographic algorithms were used. Packet analysis confirmed SNMP traffic was encrypted and mutual authentication was enforced."
