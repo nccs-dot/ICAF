@@ -49,6 +49,18 @@ class Engine:
             oam_context=oam_context
         )
 
+        # Validate required fields
+        required = {
+            "SSH_USER": ssh_user,
+            "SSH_IP": ssh_ip,
+            "SSH_PASSWORD": ssh_password
+        }
+
+        missing = [k for k, v in required.items() if not v]
+
+        if missing:
+            raise ValueError(f"Missing required env variables: {missing}")
+
         # Inject profile into context
         self.context.profile = self.profile
 

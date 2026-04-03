@@ -27,10 +27,7 @@ class TC7HTTPSInvalidLogin(TestCase):
         )
 
     def run(self, context):
-        driver = context.browser.driver
-
-        driver.delete_all_cookies()
-        driver.get("about:blank") 
+        
         raw_url = context.profile.get("web.login_url", context.web_login_url)
 
         ip = getattr(context, "ssh_ip", None) or getattr(context, "ip", None)
@@ -39,6 +36,12 @@ class TC7HTTPSInvalidLogin(TestCase):
             raise ValueError("No IP found in context (ssh_ip/ip)")
 
         login_url = context.web_login_url
+        driver = context.browser.driver
+        driver.get(login_url)  # must be real origin
+
+        driver.execute_script("window.localStorage.clear();")
+        driver.execute_script("window.sessionStorage.clear();")
+        driver.delete_all_cookies()
         username   = context.profile.get("web.username",   context.web_username)
         bad_pass   = context.profile.get("web.bad_password", "WrongAdmin@999!")
         user_sel   = context.profile.get("web.user_field_selector",

@@ -17,6 +17,9 @@ from icaf.steps.wireshark_packet_screenshot_step import WiresharkPacketScreensho
 from icaf.steps.wait_step import WaitStep
 from icaf.steps.session_reset_step import SessionResetStep
 from icaf.utils.logger import logger
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 
 
 class TC6HTTPSValidLogin(TestCase):
@@ -44,7 +47,7 @@ class TC6HTTPSValidLogin(TestCase):
         dashboard_indicators = [
             s.strip() for s in context.profile.get(
                 "web.dashboard_indicator",
-                "System Information,Dashboard,logout,Logout,index.asp",
+                "System Information,Dashboard,logout,Logout,index.asp,LOGOUT",
             ).split(",")
         ]
 
@@ -67,9 +70,15 @@ class TC6HTTPSValidLogin(TestCase):
         StepRunner([PcapStopStep()]).run(context)
 
         # Check dashboard is accessible
-        ok = VerifyOutputStep(
-            "browser", dashboard_indicators, should_exist=True
-        ).execute(context)
+        try:
+            WebDriverWait(context.browser.driver, 20).until(
+                EC.presence_of_element_located(
+                    (By.XPATH, "//*[contains(text(), 'Logout')]")
+                )
+            )
+            ok = True
+        except:
+            ok = False
 
         if ok:
             logger.info("TC6: HTTPS valid login succeeded — dashboard accessible")

@@ -1,6 +1,7 @@
 import uuid
 from datetime import datetime
 from icaf.evidence.manager import EvidenceManager
+import os
 
 
 class RuntimeContext:
@@ -42,7 +43,7 @@ class RuntimeContext:
         self.web_login_url = web_login_url
         self.web_username = web_username
         self.web_password = web_password
-        self.interface = "eth0"
+        self.interface = os.getenv("INTERFACE", "eth0")
 
         # Core subsystems (initialized later)
         self.ssh_connection = None

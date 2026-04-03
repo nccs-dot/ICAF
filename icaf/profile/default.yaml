@@ -120,12 +120,12 @@ ssh:
     ssh_server_status: "systemctl status ssh"
     log_buffer: "display logbuffer"
 
-  # ── DUT information commands (used by get_dut_info()) ──────────────────
-  dut_info:
-    hostname_command: "cat /etc/os-release"
-    os_release_command: "cat /etc/os-release"
-    os_hash_command: "sha256sum /etc/os-release 2>/dev/null | awk '{print $1}'"
-    config_hash_command: "sha256sum /etc/ssh/sshd_config 2>/dev/null | awk '{print $1}'"
+# ── DUT information commands (used by get_dut_info()) ──────────────────
+dut_info:
+  hostname_command: "sys"
+  os_release_command: "cat /etc/os-release"
+  os_hash_command: "sha256sum /etc/os-release 2>/dev/null | awk '{print $1}'"
+  config_hash_command: "sha256sum /etc/ssh/sshd_config 2>/dev/null | awk '{print $1}'"
 
 
 # ── SNMP ──────────────────────────────────────────────────────────────────────
@@ -210,7 +210,7 @@ web:
 
   # ── Pattern lists (used by VerifyOutputStep) ───────────────────────────
   # Text that must appear on the page after a SUCCESSFUL login (TC6)
-  dashboard_indicator: "System Information,Dashboard,logout,Logout,index.asp,Quick Access"
+  dashboard_indicator: "System Information,Dashboard,logout,Logout,index.asp,Quick Access, LOGOUT"
 
   # Text that must appear on the page after a FAILED login (TC7)
   login_error_indicator: "Failed to log in,Invalid credentials,Login failed,Incorrect,login failed,incorrect"

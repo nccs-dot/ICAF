@@ -119,35 +119,39 @@ class TC3SSHMutualAuth(TestCase):
             "Permission denied, please try again",
         ]
 
-        reject_p = (
-            context.profile.get_list("ssh.failure_prompt")
-            + ["Too many authentication failures", "Disconnected", "Connection closed", "Permission denied"]
-        )
+        final_fail_msgs = [
+            "Permission denied (publickey,password)",
+            "Too many authentication failures",
+            "Disconnected",
+            "Connection closed",
+        ]
+
+        max_attempts = 5
+        attempts = 0
 
         StepRunner([
             PcapStartStep(interface="eth0", filename="tc3_ssh_negative.pcapng"),
             CommandStep("tester", ssh_cmd, settle_time=4),
         ]).run(context)
 
-        while True:
+        while attempts < max_attempts:
             pattern, _ = ExpectOneOfStep(
-                "tester", pass_p + retry_msgs + reject_p, timeout=15
+                "tester", pass_p + retry_msgs + final_fail_msgs, timeout=15
             ).execute(context)
 
-            # If SSH is asking for password → enter it
             if pattern in pass_p:
-                logger.info("TC3 Negative: Password prompt received, sending bad password")
+                attempts += 1
+                logger.info(f"TC3 Negative: Attempt {attempts} - sending bad password")
                 StepRunner([InputStep("tester", bad_pass)]).run(context)
                 continue
 
-            # If SSH says retry → wait for next password prompt (do NOT input immediately)
             if pattern in retry_msgs:
-                logger.info("TC3 Negative: Retry message received — waiting for next prompt")
+                logger.info("TC3 Negative: Retry message received")
                 continue
 
-            # Final rejection cases
-            if pattern in reject_p:
-                logger.info("TC3 Negative: DUT rejected bad credentials — '%s'", pattern)
+            if pattern in final_fail_msgs:
+                logger.info("TC3 Negative: Final rejection — '%s'", pattern)
+
                 StepRunner([PcapStopStep()]).run(context)
                 ScreenshotStep("tester").execute(context)
 
@@ -158,13 +162,15 @@ class TC3SSHMutualAuth(TestCase):
                 ]).run(context)
                 return True
 
-            # Safety fallback (should not normally hit)
-            logger.error("TC3 Negative: Unexpected behavior during SSH auth")
+            logger.error("TC3 Negative: Unexpected behavior")
             break
+
+        logger.error("TC3 Negative: Max attempts reached without proper rejection")
 
         StepRunner([PcapStopStep()]).run(context)
         ScreenshotStep("tester").execute(context)
         StepRunner([ClearTerminalStep("tester")]).run(context)
+
         return False
 
     # ── entry point ────────────────────────────────────────────────────────
