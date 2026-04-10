@@ -21,6 +21,7 @@ class RuntimeContext:
             web_login_url=None,
             web_username=None,
             web_password=None,
+            testbed_diagram=None,
             oam_context=None
         ):
 
@@ -44,6 +45,7 @@ class RuntimeContext:
         self.web_username = web_username
         self.web_password = web_password
         self.interface = os.getenv("INTERFACE", "eth0")
+        self.testbed_diagram=testbed_diagram
 
         # Core subsystems (initialized later)
         self.ssh_connection = None

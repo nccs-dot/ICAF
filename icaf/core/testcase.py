@@ -9,6 +9,10 @@ class TestCase:
         self.evidence = []
         self.status = "NOT_RUN"
 
+        # Set by skip() when a TC is excluded at runtime (e.g. protocol absent).
+        # None means the TC was never attempted for an unspecified reason.
+        self.skip_reason: str | None = None
+
     def add_step(self, step):
 
         self.steps.append(step)
@@ -29,6 +33,20 @@ class TestCase:
     def fail_test(self):
 
         self.status = "FAIL"
+
+    def skip(self, reason: str) -> "TestCase":
+        """
+        Mark this TC as not applicable with an explicit reason.
+
+        Used when a TC is intentionally bypassed at runtime (e.g. the required
+        protocol was not detected on the DUT).  The status is set to
+        ``NOT_APPLICABLE`` so the report can render protocol-specific text
+        rather than the generic "test not executed" message that appears for
+        TCs that are simply commented out of the clause.
+        """
+        self.status = "NOT_APPLICABLE"
+        self.skip_reason = reason
+        return self
 
     def run(self, context):
 

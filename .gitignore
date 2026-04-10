@@ -5,3 +5,5 @@ output
 icaf.egg-info
 myenv
 oam.xlsx
+*.png
+.env

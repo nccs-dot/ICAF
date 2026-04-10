@@ -22,6 +22,7 @@ from .ssh_mixin import SSHMixin
 
 
 class TC5SSHIncorrectPublicKey(TestCase, SSHMixin):
+    protocol = "ssh"
 
     def __init__(self):
         super().__init__(
@@ -88,10 +89,20 @@ class TC5SSHIncorrectPublicKey(TestCase, SSHMixin):
 
         create_commands = context.profile.get_list("user_mgmt.create_commands")
 
+        # Create .ssh dir but leave authorized_keys empty — key exists on DUT
+        # filesystem but is never registered, so pubkey auth must be rejected.
+        ssh_dir_commands = [
+            ["mkdir -p /home/{username}/.ssh",                      ["$", "#"]],
+            ["chmod 700 /home/{username}/.ssh",                     ["$", "#"]],
+            ["touch /home/{username}/.ssh/authorized_keys",         ["$", "#"]],
+            ["chmod 600 /home/{username}/.ssh/authorized_keys",     ["$", "#"]],
+            ["chown -R {username}:{username} /home/{username}/.ssh",["$", "#"]],
+        ]
+
         self.ssh_open_session(context)
+        StepRunner([ClearTerminalStep("tester")]).run(context)
         self.ssh_become_root(context, root_password=context.ssh_password)
 
-        # create user ONLY (no pubkey config)
         self.ssh_run_commands(
             context,
             create_commands,
@@ -103,13 +114,20 @@ class TC5SSHIncorrectPublicKey(TestCase, SSHMixin):
             },
         )
 
+        # Create the .ssh structure without adding any key to authorized_keys
+        self.ssh_run_commands(
+            context,
+            ssh_dir_commands,
+            fmt_kwargs={"username": username},
+        )
+
         ScreenshotStep(
             "tester",
-            caption="TC5 Step 3 — Test user created on DUT without any authorized public key configured",
+            caption="TC5 Step 3 — Test user created on DUT with empty authorized_keys; unregistered key will be rejected",
         ).execute(context)
         StepRunner([ClearTerminalStep("tester")]).run(context)
 
-        logger.info("TC5: User created WITHOUT authorized_keys")
+        logger.info("TC5: User created with .ssh dir but NO authorized key")
 
         self.ssh_close_session(context)
         self.ssh_close_session(context)
@@ -180,6 +198,7 @@ class TC5SSHIncorrectPublicKey(TestCase, SSHMixin):
             logger.warning("TC5: Cleanup failed")
 
         StepRunner([
+            SessionResetStep("tester", post_reset_delay=4),
             SessionResetStep("tester", post_reset_delay=4)
         ]).run(context)
 

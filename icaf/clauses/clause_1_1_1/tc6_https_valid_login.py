@@ -23,7 +23,7 @@ from selenium.webdriver.support import expected_conditions as EC
 
 
 class TC6HTTPSValidLogin(TestCase):
-
+    protocol = "https"
     def __init__(self):
         super().__init__(
             "TC6_HTTPS_VALID_LOGIN",

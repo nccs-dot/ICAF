@@ -25,6 +25,7 @@ class Engine:
         web_login_url=None,
         web_username=None,
         web_password=None,
+        testbed_diagram=None,
         oam_context=None
     ):
 
@@ -46,6 +47,7 @@ class Engine:
             web_login_url=web_login_url,
             web_username=web_username,
             web_password=web_password,
+            testbed_diagram=testbed_diagram,
             oam_context=oam_context
         )
 

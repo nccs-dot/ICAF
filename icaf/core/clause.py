@@ -28,7 +28,14 @@ class BaseClause:
             if allowed_protocols is not None and protocol:
                 if protocol not in allowed_protocols:
                     from icaf.utils.logger import logger
-                    logger.info(f"Skipping {tc.name} (protocol={protocol} not available)")
+                    reason = (
+                        f"Protocol '{protocol}' was not detected on the DUT "
+                        f"during OAM verification — test case does not apply "
+                        f"to the evaluated device."
+                    )
+                    logger.info(f"Skipping {tc.name}: {reason}")
+                    tc.skip(reason)
+                    results.append(tc)
                     continue
 
             # Set active testcase in runtime context

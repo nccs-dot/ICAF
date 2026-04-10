@@ -249,7 +249,7 @@ class SSHMixin:
         where this behaviour is expected and intentional.
         """
         options = context.profile.get_list("ssh.connect_options")
-        extra   = ["-o", "IdentitiesOnly=yes", "-i", key_path]
+        extra   = ["-o", "PasswordAuthentication=no","-o", "IdentitiesOnly=yes", "-i", key_path]
         base  = context.profile.get("ssh.base", "ssh")
         ssh_cmd = " ".join([base] + options + extra + [f"{remote_user}@{context.ssh_ip}"])
  
@@ -267,7 +267,7 @@ class SSHMixin:
         StepRunner([CommandStep("tester", ssh_cmd, settle_time=settle_time)]).run(context)
  
         pattern, _ = ExpectOneOfStep(
-            "tester", success_p + pass_p + fail_p, timeout=timeout
+            "tester", pass_p + fail_p + success_p, timeout=timeout
         ).execute(context)
  
         # ── unexpected password prompt ─────────────────────────────────────
@@ -309,14 +309,14 @@ class SSHMixin:
         """
         sftp_cmd = self._build_sftp_cmd(context)
 
-        StepRunner([CommandStep("tester", sftp_cmd, settle_time=settle_time)]).run(context)
+        StepRunner([CommandStep("tester", sftp_cmd, settle_time=settle_time, capture_evidence=False)]).run(context)
         ExpectOneOfStep(
             "tester", self._get_password_prompts(context), timeout=10
         ).execute(context)
         StepRunner([InputStep("tester", context.ssh_password)]).run(context)
         ExpectOneOfStep("tester", ["sftp>"], timeout=10).execute(context)
 
-        StepRunner([InputStep("tester", f"put {local_path} {remote_path}")]).run(context)
+        StepRunner([InputStep("tester", f"put {local_path} {remote_path}", capture_evidence=True)]).run(context)
         ExpectOneOfStep("tester", ["100%", "Uploading", "sftp>"], timeout=upload_timeout).execute(context)
 
         StepRunner([InputStep("tester", "exit")]).run(context)
@@ -412,6 +412,8 @@ class SSHMixin:
             root_password=context.ssh_password
         )
 
+        StepRunner([ClearTerminalStep("tester")]).run(context)
+
         self.ssh_run_commands(
             context,
             commands,
@@ -419,9 +421,6 @@ class SSHMixin:
                 "username": username,
             },
         )
-
-        self.ssh_close_session(context)
-        self.ssh_close_session(context)
 
         logger.info("SSHMixin: local user '%s' deleted from DUT", username)
 

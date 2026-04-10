@@ -22,7 +22,7 @@ from .ssh_mixin import SSHMixin
 
 
 class TC4SSHCorrectPublicKey(TestCase, SSHMixin):
-
+    protocol = "ssh"
     def __init__(self):
         super().__init__(
             "TC4_SSH_CORRECT_PUBLIC_KEY",
@@ -149,17 +149,12 @@ class TC4SSHCorrectPublicKey(TestCase, SSHMixin):
 
     def _teardown_dut(self, context):
         username        = context.profile.get("ssh.pubkey.dut_user", "Test5")
-        delete_commands = context.profile.get_list("user_mgmt.delete_commands")
 
         StepRunner([ClearTerminalStep("tester")]).run(context)
 
-        self.ssh_open_session(context)
-        self.ssh_become_root(context, root_password=context.ssh_password)
-
-        self.ssh_run_commands(
+        self.dut_delete_local_user(
             context,
-            delete_commands,
-            fmt_kwargs={"username": username},
+            username=username,
         )
 
         StepRunner([ClearTerminalStep("tester")]).run(context)
@@ -203,7 +198,9 @@ class TC4SSHCorrectPublicKey(TestCase, SSHMixin):
                     caption="TC4 Step 4 — Wireshark confirms SSH public key authentication exchange completed successfully",
                 ),
             ]).run(context)
-            CommandStep("tester", "exit", settle_time=4, capture_evidence=False)
+            StepRunner([
+                CommandStep("tester", "exit", settle_time=4, capture_evidence=False)
+            ]).run(context)
 
             return True
 
@@ -224,7 +221,7 @@ class TC4SSHCorrectPublicKey(TestCase, SSHMixin):
             logger.warning("TC4: Could not delete user '%s' during cleanup",
                            context.profile.get("ssh.pubkey.dut_user", "Test5"))
 
-        StepRunner([SessionResetStep("tester", post_reset_delay=4)]).run(context)
+        # StepRunner([SessionResetStep("tester", post_reset_delay=4)]).run(context)
 
         self.pass_test() if success else self.fail_test()
         return self

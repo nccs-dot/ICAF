@@ -73,18 +73,20 @@ _ANTHROPIC_API_URL = "https://api.anthropic.com/v1/messages"
 _ANTHROPIC_MODEL   = "claude-sonnet-4-20250514"
 
 # ── Status constants ──────────────────────────────────────────────────────────
-_PASS    = "PASS"
-_FAIL    = "FAIL"
-_NOT_RUN = "NOT RUN"
+_PASS           = "PASS"
+_FAIL           = "FAIL"
+_NOT_RUN        = "NOT RUN"
+_NOT_APPLICABLE = "NOT APPLICABLE"   # protocol absent on DUT — distinct from intentionally skipped
 
 # Show credentials verbatim?  Default: redact.
 _SHOW_CREDS = os.environ.get("ICAF_SHOW_CREDENTIALS", "0") == "1"
 
 # Status accent colours {status: (bg_hex, border_hex, RGBColor)} ────────────
 _ACCENT = {
-    _PASS:    ("E8F5E9", "006400", PASS_GREEN),
-    _FAIL:    ("FFF3F3", "CC0000", FAIL_RED),
-    _NOT_RUN: ("F5F5F5", "AAAAAA", NOT_RUN_COLOR),
+    _PASS:           ("E8F5E9", "006400", PASS_GREEN),
+    _FAIL:           ("FFF3F3", "CC0000", FAIL_RED),
+    _NOT_RUN:        ("F5F5F5", "AAAAAA", NOT_RUN_COLOR),
+    _NOT_APPLICABLE: ("FFF8E7", "B8860B", RGBColor(0xB8, 0x86, 0x0B)),  # amber
 }
 
 
@@ -564,7 +566,12 @@ def _summarise_evidence_for_ai(evidence: list[dict]) -> str:
 # ─────────────────────────────────────────────────────────────────────────────
 
 def _pick_status_text(spec: dict, field: str, status: str, fallback: str = "") -> str:
-    suffix_map = {_PASS: "pass", _FAIL: "fail", _NOT_RUN: "not_run"}
+    suffix_map = {
+        _PASS:           "pass",
+        _FAIL:           "fail",
+        _NOT_RUN:        "not_run",
+        _NOT_APPLICABLE: "not_applicable",
+    }
     suffix = suffix_map.get(status.upper(), "not_run")
     text = spec.get(f"{field}_{suffix}", "").strip()
     if text:
@@ -605,6 +612,28 @@ def _default_remark(tc_name: str, status: str) -> str:
     if status == _FAIL:
         return f"The DUT failed to satisfy the security requirement for {tc_name}."
     return "N/A - Test case was not executed."
+
+
+def _default_observation_na(tc_name: str, skip_reason: str) -> str:
+    return (
+        f"This test case was not executed because the required protocol is not present "
+        f"on the DUT. {skip_reason}"
+    )
+
+
+def _default_conclusion_na(tc_name: str) -> str:
+    return (
+        f"Not applicable — the protocol required for {tc_name} is not supported by "
+        f"the evaluated device. No compliance determination is made for this test case."
+    )
+
+
+def _default_remark_na(tc_name: str, skip_reason: str) -> str:
+    return (
+        f"Protocol not present on DUT. {skip_reason} "
+        f"This test case is excluded from the pass/fail count and does not affect "
+        f"the overall evaluation result."
+    )
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -797,6 +826,7 @@ class Clause111Report:
                     "description": _get(r, "description", ""),
                     "status":      _get(r, "status", "FAIL").upper(),
                     "evidence":    list(ev_new),
+                    "skip_reason": _get(r, "skip_reason", None),
                 }
                 self._ran_canonical.append(canonical)
 
@@ -804,11 +834,16 @@ class Clause111Report:
         ran_set = set(self._ran_canonical) & set(self._canonical_ordered)
         self._ran_count     = len(self._ran_canonical)
         self._total_defined = len(self._canonical_ordered)
+
+        # TCs completely absent from results (commented-out / intentionally excluded)
         self._not_run_count = len(set(self._canonical_ordered) - ran_set)
 
         statuses = [self._result_map[n]["status"] for n in self._ran_canonical]
+
+        # NOT_APPLICABLE = protocol absent on DUT; excluded from pass/fail tallies
+        self._not_applicable_count = statuses.count("NOT_APPLICABLE")
         self._pass_count = statuses.count("PASS")
-        self._fail_count = len(statuses) - self._pass_count
+        self._fail_count = len(statuses) - self._pass_count - self._not_applicable_count
 
         self.final_result = (
             "PASS"
@@ -829,28 +864,46 @@ class Clause111Report:
             if canonical in self._result_map:
                 result = self._result_map[canonical]
                 status = result["status"]
-                obs = _pick_status_text(
-                    spec_tc, "observation", status,
-                    _default_observation(canonical, status),
-                )
-                obs = _ai_enrich_observation(canonical, spec_tc, result, obs)
-                self._tc_observation[canonical] = obs
-                self._tc_conclusion[canonical]  = _pick_status_text(
-                    spec_tc, "conclusion", status,
-                    _default_conclusion(canonical, status),
-                )
-                self._tc_remark[canonical] = _pick_status_text(
-                    spec_tc, "remarks", status,
-                    _default_remark(canonical, status),
-                )
+
+                if status == "NOT_APPLICABLE":
+                    # Protocol was not present on DUT — render specific NA text
+                    skip_reason = result.get("skip_reason", "Protocol not present on DUT.")
+                    self._tc_observation[canonical] = _pick_status_text(
+                        spec_tc, "observation", _NOT_APPLICABLE,
+                        _default_observation_na(canonical, skip_reason),
+                    )
+                    self._tc_conclusion[canonical] = _pick_status_text(
+                        spec_tc, "conclusion", _NOT_APPLICABLE,
+                        _default_conclusion_na(canonical),
+                    )
+                    self._tc_remark[canonical] = _pick_status_text(
+                        spec_tc, "remarks", _NOT_APPLICABLE,
+                        _default_remark_na(canonical, skip_reason),
+                    )
+                else:
+                    obs = _pick_status_text(
+                        spec_tc, "observation", status,
+                        _default_observation(canonical, status),
+                    )
+                    obs = _ai_enrich_observation(canonical, spec_tc, result, obs)
+                    self._tc_observation[canonical] = obs
+                    self._tc_conclusion[canonical]  = _pick_status_text(
+                        spec_tc, "conclusion", status,
+                        _default_conclusion(canonical, status),
+                    )
+                    self._tc_remark[canonical] = _pick_status_text(
+                        spec_tc, "remarks", status,
+                        _default_remark(canonical, status),
+                    )
             else:
+                # TC was intentionally excluded (commented out of clause)
                 self._tc_observation[canonical] = _pick_status_text(
                     spec_tc, "observation", _NOT_RUN, "N/A")
                 self._tc_conclusion[canonical]  = _pick_status_text(
                     spec_tc, "conclusion", _NOT_RUN, "N/A")
                 self._tc_remark[canonical] = _pick_status_text(
                     spec_tc, "remarks", _NOT_RUN,
-                    "N/A - Test case was not executed in this evaluation run.")
+                    "N/A - Test case was intentionally excluded from this evaluation run.")
 
     # ── helpers ───────────────────────────────────────────────────────────
 
@@ -959,7 +1012,6 @@ class Clause111Report:
     def _section_dut_config(self, doc: Any) -> None:
         spacer(doc, large=True)
         body_para(doc, "4. DUT Configuration:", bold=True, color=PURPLE)
-        body_para(doc, "Note: " + self.spec["dut_config"]["split_mode_note"].strip())
         spacer(doc)
         body_para(doc, "1) OAM Access supported by DUT:", bold=True)
 
@@ -990,7 +1042,6 @@ class Clause111Report:
         bullet_item(doc, "No (Unexpected): Running but not documented")
         spacer(doc)
         body_para(doc, "NOTE:", bold=True, color=FAIL_RED)
-        body_para(doc, self.spec["dut_config"]["snmp_note"].strip())
 
     def _section_preconditions(self, doc: Any) -> None:
         spacer(doc, large=True)
@@ -1027,20 +1078,76 @@ class Clause111Report:
         body_para(doc, "9. Expected Format of Evidence:", bold=True, color=PURPLE)
         body_para(doc, self.spec["test_plan"]["evidence_format"].strip())
 
+     # ── Testbed Diagram ───────────────────────────────────────────────────
+
+    def _section_testbed_diagram(self, doc: Any) -> None:
+        import glob
+        spacer(doc, large=True)
+        body_para(doc, "10. Testbed Diagram:", bold=True, color=PURPLE)
+        body_para(doc,
+            "The following diagram illustrates the physical and logical testbed "
+            "topology used during this evaluation, including the Device Under Test "
+            "(DUT), the tester machine, and the interconnecting network."
+        )
+        spacer(doc)
+
+        # Search for a testbed diagram image in the project root directory
+        root = Path(__file__).resolve().parents[3]  # icaf-main/
+        patterns = [
+            "testbed*.png", "testbed*.jpg", "testbed*.jpeg",
+            "testbed*.PNG", "testbed*.JPG",
+            "topology*.png", "topology*.jpg",
+            "diagram*.png",  "diagram*.jpg",
+        ]
+        image_path: str | None = None
+        for pattern in patterns:
+            matches = glob.glob(str(root / pattern))
+            if matches:
+                image_path = matches[0]
+                break
+
+        if image_path and os.path.isfile(image_path):
+            add_screenshot(doc, image_path, width_inches=6.5)
+            add_caption_with_numbering(
+                doc,
+                f"Testbed diagram",
+                "Figure",
+            )
+        else:
+            body_para(
+                doc,
+                "\u26a0  No testbed diagram image found.  Place a file named "
+                "testbed.png (or testbed.jpg / topology.png) in the project "
+                "root directory to embed it automatically.",
+                italic=True, color=MID_GREY,
+            )
+        spacer(doc)
+
     # ── Test execution ────────────────────────────────────────────────────
 
     def _section_test_execution(self, doc: Any) -> None:
         doc.add_page_break()
         section_heading(doc, "10. Test Execution")
 
-        if self._not_run_count > 0:
+        if self._not_applicable_count > 0 or self._not_run_count > 0:
             spacer(doc, small=True)
+            parts = []
+            if self._not_applicable_count:
+                parts.append(
+                    f"{self._not_applicable_count} case(s) were not applicable "
+                    f"(required protocol not present on DUT)"
+                )
+            if self._not_run_count:
+                parts.append(
+                    f"{self._not_run_count} case(s) were intentionally excluded from this run"
+                )
             body_para(
                 doc,
                 f"NOTE: This report covers {self._ran_count} of "
                 f"{self._total_defined} defined test cases. "
-                f"{self._not_run_count} case(s) were not executed in this run.",
-                bold=True, color=FAIL_RED,
+                + "; ".join(parts) + ".",
+                bold=True,
+                color=FAIL_RED if self._not_run_count else NOT_RUN_COLOR,
             )
 
         tc_specs     = self.spec.get("testcases", {})
@@ -1178,14 +1285,20 @@ class Clause111Report:
             data_rows.append((str(sl), canonical, status, remarks, status))
 
         totals_detail = (
-            "All test cases passed successfully."
+            "All applicable test cases passed successfully."
             if self.final_result == "PASS"
             else (
-                f"{self._fail_count} case(s) failed"
-                + (f", {self._not_run_count} not run." if self._not_run_count else ".")
+                ", ".join(filter(None, [
+                    f"{self._fail_count} case(s) failed" if self._fail_count else "",
+                    (f"{self._not_applicable_count} not applicable (protocol absent on DUT)"
+                     if self._not_applicable_count else ""),
+                    f"{self._not_run_count} not run" if self._not_run_count else "",
+                ])) + "."
             )
         )
         counts_str = f"{self._pass_count}P / {self._fail_count}F"
+        if self._not_applicable_count:
+            counts_str += f" / {self._not_applicable_count}NA"
         if self._not_run_count:
             counts_str += f" / {self._not_run_count}NR"
 
@@ -1208,12 +1321,22 @@ class Clause111Report:
         for b in self.spec.get("conclusion_bullets", []):
             bullet_item(doc, b)
 
+        if self._not_applicable_count > 0:
+            bullet_item(
+                doc,
+                f"NOTE: {self._not_applicable_count} test case(s) were not applicable because "
+                f"the required protocol was not detected on the DUT during OAM verification. "
+                f"These cases are excluded from the pass/fail determination and do not affect "
+                f"the overall evaluation result.",
+                bold=False,
+            )
+
         if self._not_run_count > 0:
             bullet_item(
                 doc,
                 f"NOTE: This run executed {self._ran_count} of "
                 f"{self._total_defined} defined test cases. The remaining "
-                f"{self._not_run_count} case(s) were not run and must be "
+                f"{self._not_run_count} case(s) were intentionally excluded from this run and must be "
                 "completed before a final pass verdict can be issued.",
                 bold=True,
             )
@@ -1225,11 +1348,14 @@ class Clause111Report:
             label="Overall Evaluation Result",
             detail=(
                 f"{self._pass_count} of {self._total_defined} cases passed."
-                if not self._not_run_count
+                if not self._not_run_count and not self._not_applicable_count
                 else (
                     f"{self._pass_count} passed, "
-                    f"{self._fail_count} failed, "
-                    f"{self._not_run_count} not run."
+                    f"{self._fail_count} failed"
+                    + (f", {self._not_applicable_count} not applicable (protocol absent on DUT)"
+                       if self._not_applicable_count else "")
+                    + (f", {self._not_run_count} not run" if self._not_run_count else "")
+                    + "."
                 )
             ),
             wide=True,
@@ -1258,6 +1384,7 @@ class Clause111Report:
         self._section_preconditions(doc)
         self._section_test_objective(doc)
         self._section_test_plan(doc)
+        self._section_testbed_diagram(doc)
 
         self._section_test_execution(doc)
         self._section_result_summary(doc)

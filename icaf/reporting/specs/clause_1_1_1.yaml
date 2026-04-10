@@ -28,14 +28,7 @@ requirement_description: >
   [Reference: TSDSI STD T1.3GPP 33.117-14.2.0 V.1.0.0. section 4.2.3.4.4.1]
 
 dut_config:
-  split_mode_note: >
-    The DUT (WD4520-X1) is a standalone MPLS router. All management interfaces
-    (SSH, HTTPS, SNMPv3, gRPC/gNMI) are configured directly on the device.
-  snmp_note: >
-    SNMPv1 and SNMPv2c are disabled by default on the DUT, meeting ITSAR
-    security requirements. SNMPv3 with SHA authentication and AES-128 privacy
-    is supported. The DUT rejects connections using weaker algorithms (MD5,
-    3DES, DES56).
+  
   oam_access:
     - protocol: "Console"
       supported: "Yes (RS-232, 9600 baud)"
@@ -68,16 +61,17 @@ test_objective: >
 
 test_plan:
   scope_note: >
-    The DUT (WD4520-X1) supports SNMPv3, SSH (password and public key),
+    The DUT supports SNMPv3, SSH (password and public key),
     HTTPS, and gRPC/gNMI for management. All applicable protocols are tested
     for mutual authentication. Console access is out of scope for automated
     testing.
   tools:
     - "Kali GNU/Linux Rolling 2025.1"
     - "Wireshark 4.6.0"
-    - "Putty v0.83"
-    - "OpenSSL 3.5.4"
-    - "grpcurl dev build"
+    - "snmpget"
+    - "Selenium"
+    - "tshark"
+    - "Wireshark"
     - "Nmap 7.95"
   evidence_format: >
     Screenshots of commands performed on Kali Linux, web browser terminal, and

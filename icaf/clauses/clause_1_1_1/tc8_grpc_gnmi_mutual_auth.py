@@ -19,6 +19,7 @@ from .ssh_mixin import SSHMixin
 
 
 class TC8GRPCGNMIMutualAuth(TestCase, SSHMixin):
+    protocol = "grpc"
     """
     Test Scenario 1.1.1.8 — Configure and verify mutual authentication
     over gRPC/gNMI.

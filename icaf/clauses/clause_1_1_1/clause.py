@@ -14,13 +14,13 @@ class Clause_1_1_1(BaseClause):
 
         super().__init__(context)
 
-        self.add_testcase(TC1SNMPv3Positive())
-        self.add_testcase(TC2SNMPv3InvalidCredentials())
-        self.add_testcase(TC3SSHMutualAuth())
-        self.add_testcase(TC4SSHCorrectPublicKey())
+        # self.add_testcase(TC1SNMPv3Positive())
+        # self.add_testcase(TC2SNMPv3InvalidCredentials())
+        # self.add_testcase(TC3SSHMutualAuth())
+        # self.add_testcase(TC4SSHCorrectPublicKey())
         # self.add_testcase(TC5SSHIncorrectPublicKey())
-        self.add_testcase(TC6HTTPSValidLogin())
-        self.add_testcase(TC7HTTPSInvalidLogin())
-        # self.add_testcase(TC8GRPCGNMIMutualAuth())
+        # self.add_testcase(TC6HTTPSValidLogin())
+        # self.add_testcase(TC7HTTPSInvalidLogin())
+        self.add_testcase(TC8GRPCGNMIMutualAuth())
 
         

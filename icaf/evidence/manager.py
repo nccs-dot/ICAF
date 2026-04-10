@@ -1,5 +1,6 @@
 import os
 from datetime import datetime
+from icaf.utils.logger import attach_run_log
 
 
 class EvidenceManager:
@@ -12,6 +13,9 @@ class EvidenceManager:
         self.run_dir = f"output/runs/{timestamp}-{clause}"
 
         os.makedirs(self.run_dir, exist_ok=True)
+
+        # Attach a per-run log file immediately after the run dir exists
+        attach_run_log(self.run_dir)
 
     def testcase_dir(self, clause, testcase):
 

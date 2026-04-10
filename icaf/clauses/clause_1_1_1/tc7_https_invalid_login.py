@@ -19,6 +19,7 @@ from icaf.utils.logger import logger
 
 
 class TC7HTTPSInvalidLogin(TestCase):
+    protocol = "https"
 
     def __init__(self):
         super().__init__(

@@ -72,7 +72,7 @@ def run(
     logger.info("ICAF CLI started")
     console.print(f"[bold cyan]Using DUT profile:[/bold cyan] {profile}\n")
 
-    # ✅ Load from ENV (no prompts)
+    # Load from ENV (no prompts)
     ssh_user = os.getenv("SSH_USER")
     ssh_ip = os.getenv("SSH_IP")
     ssh_password = os.getenv("SSH_PASSWORD")
@@ -85,8 +85,9 @@ def run(
     web_login_url = os.getenv("WEB_LOGIN_URL")
     web_username = os.getenv("WEB_USERNAME")
     web_password = os.getenv("WEB_PASSWORD")
+    testbed_diagram = os.getenv("TESTBED_DIAGRAM")
 
-    # ✅ Fix condition bug
+    # Fix condition bug
     if clause in ["1.1.1", "1.1"]:
         logger.info("SNMP/Web config loaded from .env")
 
@@ -116,6 +117,7 @@ def run(
         web_username=web_username,
         web_password=web_password,
         snmp_community=snmp_community,
+        testbed_diagram=testbed_diagram,
         oam_context=oam_context
     )
 
