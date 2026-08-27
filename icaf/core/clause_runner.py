@@ -1,7 +1,6 @@
 from icaf.utils.logger import logger
 from icaf.clauses.registry import CLAUSE_REGISTRY
 
-
 class ClauseRunner:
 
     def __init__(self, context):

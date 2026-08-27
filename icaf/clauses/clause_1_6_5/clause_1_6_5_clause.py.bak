@@ -1,0 +1,351 @@
+"""
+icaf/clauses/clause_1_6_5/clause.py
+
+ITSAR 1.6.5 — Protecting Data and Information in Storage (Alpine Linux)
+
+Test plan alignment:
+  TC-165-001  Case 1 — Identify sensitive & confidential data in storage
+              Commands: cat /etc/shadow, cat /etc/passwd, ls -la /etc/ssh/ssh_host_*_key,
+                        head -1 /etc/ssh/ssh_host_rsa_key, grep logs, ssh-keygen
+
+  TC-165-002  Case 2 — Unprivileged user (test10 / priv-10 equivalent)
+              Commands: adduser, chpasswd, SSH in as test10,
+                        attempt cat /etc/shadow, /var/log/messages,
+                        /etc/ssh/ssh_host_rsa_key, /etc/passwd
+
+  TC-165-003  Case 3 — Privileged user (root / priv-15 equivalent)
+              Commands: cat /etc/shadow, grep /var/log/messages,
+                        ls -la /etc/ssh/ssh_host_*_key, head -1 key,
+                        cat /etc/passwd, ssh-keygen + stat
+
+Terminal display strategy (write-to-file + single cat):
+  All SSH output is accumulated per TC into /tmp/icaf_tc_display.txt,
+  then shown with a single `cat` — so the terminal screenshot shows one
+  clean shell command and real output underneath, no echo/printf spam.
+"""
+
+import os
+import subprocess
+import time
+
+from icaf.core.clause import BaseClause
+from icaf.core.testcase import TestCase
+from icaf.core.result_recorder import clear_results, get_results, set_terminal_manager
+from icaf.core.step_runner import StepRunner
+from icaf.steps.clear_terminal_step import ClearTerminalStep
+from icaf.utils.logger import logger
+
+from icaf.clauses.clause_1_6_5.testcases.tc_165_001 import run as run_tc001
+from icaf.clauses.clause_1_6_5.testcases.tc_165_002 import run as run_tc002
+from icaf.clauses.clause_1_6_5.testcases.tc_165_003 import run as run_tc003
+
+TERMINAL      = "dut"
+TMUX_NAME     = "TCAF-dut"
+_DISPLAY_FILE = "/tmp/icaf_tc_display.txt"
+_HEADER_FILE  = "/tmp/icaf_tc_header.txt"
+
+# Output lines shown per command in screenshot (full output goes to report)
+MAX_LINES = 8
+
+_TC_MANIFEST = [
+    (run_tc001, "TC-165-001",
+     "Identify Sensitive & Confidential Data in Storage",
+     "Verify sensitive data (passwords, keys, logs) is not stored in cleartext"),
+
+    (run_tc002, "TC-165-002",
+     "Unprivileged User Cannot Access Sensitive Stored Data",
+     "Verify unprivileged user is denied access to shadow, audit logs, and private keys"),
+
+    (run_tc003, "TC-165-003",
+     "Privileged User Sees Only Encrypted/Hashed Data in Storage",
+     "Verify privileged access reveals only hashed/encrypted data — no plaintext"),
+]
+
+
+# ── tmux helpers ──────────────────────────────────────────────────────────────
+
+def _tmux(keys, enter=True):
+    cmd = ["tmux", "send-keys", "-t", TMUX_NAME, keys]
+    if enter:
+        cmd.append("Enter")
+    subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+
+def _write_and_cat(path, content):
+    """Write content to a local temp file, then cat it into the terminal.
+    Terminal shows exactly:  $ cat <path>  followed by the file content —
+    one shell command, no echo/printf artefacts."""
+    with open(path, "w", encoding="utf-8") as fh:
+        fh.write(content)
+    _tmux(f"cat {path}")
+    time.sleep(0.4)
+
+
+# ── Key-line filter ───────────────────────────────────────────────────────────
+
+def _key_lines(output, max_lines=MAX_LINES):
+    """Return the most evidence-relevant lines from SSH output, capped at
+    max_lines. Prioritises verdict/hash/denial keywords over raw file dumps."""
+    all_lines = [l for l in output.splitlines() if l.strip()]
+    if not all_lines:
+        return ["(no output)"]
+
+    VERDICT_KEYS = (
+        "PASS", "FAIL", "ERROR",
+        "denied", "Denied", "Permission denied",
+        "hashed", "Hashed", "plaintext", "Plaintext",
+        "PEM", "$6$", "BEGIN OPENSSH",
+        "check", "Check", "SUCCESS",
+        "600", "Bad perms",
+    )
+
+    priority, normal = [], []
+    for line in all_lines:
+        if any(k in line for k in VERDICT_KEYS) or line.startswith("==="):
+            priority.append(line)
+        else:
+            normal.append(line)
+
+    selected, seen = [], set()
+    for line in priority + normal:
+        if line not in seen and len(selected) < max_lines:
+            selected.append(line)
+            seen.add(line)
+
+    return selected or [all_lines[0]]
+
+
+# ── Clause ────────────────────────────────────────────────────────────────────
+
+class Clause_1_6_5(BaseClause):
+
+    name = "1.6.5 Protecting Data and Information in Storage"
+
+    def __init__(self, context):
+        super().__init__(context)
+        self._ssh            = None
+        self._display_blocks = []   # accumulates per-command display blocks
+
+    def run(self):
+        clear_results()
+
+        tm = getattr(self.context, "terminal_manager", None)
+        if tm is not None:
+            set_terminal_manager(tm)
+
+        self._ssh = self._make_ssh_session()
+        self._open_terminal()
+        self._patch_visual()
+
+        for runner_fn, tc_id, tc_name, _desc in _TC_MANIFEST:
+            logger.info(f"[1.6.5] Running {tc_id}: {tc_name}")
+
+            # Reset per-TC display buffer
+            self._display_blocks = []
+
+            # Show TC header via single cat (no echo/printf)
+            header = (
+                "\n" + "=" * 55 + "\n"
+                + f"  {tc_id}: {tc_name}\n"
+                + "=" * 55 + "\n"
+            )
+            _write_and_cat(_HEADER_FILE, header)
+
+            tc_obj = TestCase(name=tc_id, description=tc_name)
+            self.context.current_testcase = tc_obj
+
+            try:
+                runner_fn(self._ssh)
+            except Exception as exc:
+                logger.error(f"[1.6.5] {tc_id} exception: {exc}")
+                from icaf.core.result_recorder import record_result, save_evidence
+                ev = save_evidence(tc_id, "N/A", str(exc))
+                record_result(
+                    tc_id, tc_name, _desc,
+                    "N/A", str(exc),
+                    "No exception expected",
+                    str(exc), "ERROR", [ev],
+                )
+
+            # Flush all accumulated display blocks → single cat → screenshot
+            self._flush_display()
+            time.sleep(2.0)
+            self._take_screenshot(tc_id)
+
+            self.context.current_testcase = None
+
+            time.sleep(0.5)
+            StepRunner([ClearTerminalStep(TERMINAL)]).run(self.context)
+            time.sleep(0.3)
+
+        try:
+            self._ssh.close()
+        except Exception:
+            pass
+
+        raw_results = get_results()
+        self.context.scan_results = {"storage_protection": raw_results}
+        return self._build_testcase_objects(raw_results)
+
+    # ── Terminal setup ────────────────────────────────────────────────────
+
+    def _open_terminal(self):
+        _tmux("clear")
+        time.sleep(0.5)
+        banner = (
+            "=== ICAF — Clause 1.6.5  Protecting Data in Storage ===\n"
+            f"=== DUT: {self.context.ssh_ip}  (Alpine Linux — SSH via paramiko) ===\n"
+        )
+        _write_and_cat(_HEADER_FILE, banner)
+        time.sleep(0.3)
+        logger.info("[1.6.5] Header shown in TCAF-dut")
+
+    # ── Patch: accumulate display blocks, flush as single cat ─────────────
+
+    def _patch_visual(self):
+        """Wrap ssh.run to accumulate formatted display blocks in memory.
+        Each block = prompt + key output lines + exit code.
+        All blocks are written to one file and cat-ed ONCE after the TC
+        completes, so the terminal shows a single `cat` command + clean output."""
+        orig = self._ssh.run
+
+        def visual_run(command, sudo=False, input_text=None):
+            result         = orig(command, sudo=sudo, input_text=input_text)
+            out, err, code = result
+            combined       = (out + err).strip()
+
+            lines  = [f"$ {command}"]
+            lines += _key_lines(combined)
+            lines += [f"[exit: {code}]", ""]
+
+            self._display_blocks.append("\n".join(lines))
+            return result
+
+        self._ssh.run = visual_run
+
+    def _flush_display(self):
+        """Write all accumulated blocks to temp file and cat once."""
+        if not self._display_blocks:
+            return
+        _write_and_cat(_DISPLAY_FILE, "\n".join(self._display_blocks))
+        self._display_blocks = []
+
+    # ── Screenshot ────────────────────────────────────────────────────────
+
+    def _take_screenshot(self, tc_id):
+        try:
+            tm = getattr(self.context, "terminal_manager", None)
+            if tm is None:
+                logger.warning("[1.6.5] Screenshot: no terminal_manager on context")
+                return
+            terminal = tm.get_terminal(TERMINAL)
+            if terminal is None:
+                logger.warning(f"[1.6.5] Screenshot: terminal '{TERMINAL}' not found")
+                return
+
+            from datetime import datetime
+            try:
+                testcase = self.context.current_testcase
+                clause   = getattr(self.context, "clause", "1_6_5")
+                path_dir = self.context.evidence.screenshot_path(clause, testcase)
+            except Exception:
+                path_dir = os.path.join("evidence", "clause_1_6_5", "screenshots")
+
+            os.makedirs(path_dir, exist_ok=True)
+            ts        = datetime.now().strftime("%H%M%S_%f")
+            full_path = os.path.join(path_dir, f"{tc_id}_{TERMINAL}_{ts}.png")
+            saved     = terminal.capture(full_path)
+
+            if saved and os.path.exists(saved):
+                logger.info(f"[1.6.5] Screenshot saved: {saved}")
+                for r in get_results():
+                    if r.get("tc_id") == tc_id:
+                        r.setdefault("evidence_files", [])
+                        if saved not in r["evidence_files"]:
+                            r["evidence_files"].append(saved)
+                        break
+            else:
+                logger.warning(f"[1.6.5] Screenshot failed for {tc_id}")
+        except Exception as exc:
+            logger.error(f"[1.6.5] Screenshot exception for {tc_id}: {exc}")
+
+    # ── Paramiko SSH session ──────────────────────────────────────────────
+
+    def _make_ssh_session(self):
+        import paramiko as _pm
+        client = _pm.SSHClient()
+        client.set_missing_host_key_policy(_pm.AutoAddPolicy())
+        client.connect(
+            hostname=self.context.ssh_ip, port=22,
+            username=self.context.ssh_user,
+            password=self.context.ssh_password,
+            timeout=30,
+        )
+        logger.info(f"[1.6.5] SSH connected to {self.context.ssh_ip}")
+        return _SSHWrapper(client)
+
+    # ── Build TestCase objects ────────────────────────────────────────────
+
+    @staticmethod
+    def _build_testcase_objects(raw_results):
+        tc_objects = []
+        for r in raw_results:
+            tc = TestCase(name=r["tc_id"], description=r.get("tc_name", ""))
+            screenshot = next(
+                (f for f in r.get("evidence_files", [])
+                 if f and (f.endswith(".png") or f.endswith(".txt"))),
+                None,
+            )
+            tc.add_evidence(
+                command=r.get("input_cmd"),
+                output=r.get("output"),
+                screenshot=screenshot,
+            )
+            tc.status = {
+                "PASS": "PASS", "FAIL": "FAIL", "ERROR": "FAIL",
+            }.get(r.get("verdict", "FAIL"), "FAIL")
+            tc.raw_result = r
+            tc_objects.append(tc)
+        return tc_objects
+
+
+# ── SSH wrapper ───────────────────────────────────────────────────────────────
+
+class _SSHWrapper:
+
+    def __init__(self, client):
+        self._client = client
+
+    @property
+    def _host(self):
+        try:
+            return self._client.get_transport().getpeername()[0]
+        except Exception:
+            return None
+
+    def run(self, command, sudo=False, input_text=None):
+        use_pty = (
+            "passwd" in command
+            and "cat"  not in command
+            and "grep" not in command
+        )
+        stdin, stdout, stderr = self._client.exec_command(
+            command, timeout=30, get_pty=use_pty,
+        )
+        if input_text:
+            try:
+                stdin.write(input_text)
+                stdin.flush()
+                stdin.channel.shutdown_write()
+            except Exception:
+                pass
+        out  = stdout.read().decode("utf-8", errors="replace")
+        err  = stderr.read().decode("utf-8", errors="replace")
+        code = stdout.channel.recv_exit_status()
+        return out, err, code
+
+    def close(self):
+        try:
+            self._client.close()
+        except Exception:
+            pass
