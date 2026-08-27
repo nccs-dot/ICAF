@@ -2,10 +2,12 @@ from icaf.utils.logger import logger
 from icaf.runtime.context import RuntimeContext
 from icaf.core.clause_runner import ClauseRunner
 from icaf.terminal.manager import TerminalManager
-from icaf.browser.manager import BrowserManager
 from icaf.reporting.report_manager import ReportManager
 from icaf.utils.dut_info import get_dut_info
 from icaf.config.profile_loader import ProfileLoader
+
+# Clauses that only need SSH — no browser, no extra terminals
+_SSH_ONLY_CLAUSES = {"1.1.3", "1.2.1", "1.2.4", "1.6.5"}
 
 
 class Engine:
@@ -25,7 +27,6 @@ class Engine:
         web_login_url=None,
         web_username=None,
         web_password=None,
-        testbed_diagram=None,
         oam_context=None
     ):
 
@@ -47,21 +48,8 @@ class Engine:
             web_login_url=web_login_url,
             web_username=web_username,
             web_password=web_password,
-            testbed_diagram=testbed_diagram,
             oam_context=oam_context
         )
-
-        # Validate required fields
-        required = {
-            "SSH_USER": ssh_user,
-            "SSH_IP": ssh_ip,
-            "SSH_PASSWORD": ssh_password
-        }
-
-        missing = [k for k, v in required.items() if not v]
-
-        if missing:
-            raise ValueError(f"Missing required env variables: {missing}")
 
         # Inject profile into context
         self.context.profile = self.profile
@@ -70,15 +58,13 @@ class Engine:
 
     def start(self):
 
-        logger.info("Starting ICAF engine")
+        logger.info("Starting TCAF engine")
         logger.info(f"Execution ID: {self.context.execution_id}")
 
         if self.context.clause:
             logger.info(f"Execution mode: Clause {self.context.clause}")
-
         elif self.context.section:
             logger.info(f"Execution mode: Section {self.context.section}")
-
         else:
             logger.info("Execution mode: Full evaluation")
 
@@ -94,24 +80,59 @@ class Engine:
             logger.info(f"{tc.name} → {tc.status}")
 
         report_manager = ReportManager()
+        report_path = report_manager.generate(self.context, results)
 
-        report_manager.generate(self.context, results)
+        # Returning these values is backward compatible with the CLI/PyQt callers
+        # and gives the local web runner a stable hand-off point for artifacts.
+        return {
+            "report_path": report_path,
+            "context": self.context,
+            "results": results,
+        }
 
     def initialize_runtime(self):
 
         logger.info("Initializing runtime environment")
 
-        # Initialize terminal manager
+        clause = self.context.clause
+        ssh_only = clause in _SSH_ONLY_CLAUSES
+
+        # Terminal manager — always needed
         self.context.terminal_manager = TerminalManager()
 
-        # Initialize browser manager
-        self.context.browser = BrowserManager()
+        # Browser — only for clauses that need it
+        if ssh_only:
+            self.context.browser = None
+            logger.info(f"Clause {clause}: browser skipped (SSH-only clause)")
+        else:
+            from icaf.browser.manager import BrowserManager
+            self.context.browser = BrowserManager()
 
         tm = self.context.terminal_manager
 
-        # Create shared terminals
-        tm.create_terminal("tester")
-        tm.create_terminal("dut")
+        if ssh_only:
+            # Clause 1.2.4 needs the dut terminal (tmux + gnome-terminal)
+            # for real scrot screenshots — same as clause 1.1.1 uses "tester"
+            tm.create_terminal(
+                "dut",
+                ssh_ip=self.context.ssh_ip,
+                ssh_user=self.context.ssh_user,
+                ssh_password=self.context.ssh_password,
+            )
+            logger.info(f"Clause {clause}: created 'dut'  terminal (SSH-only clause)")
+        else:
+            tm.create_terminal(
+                "tester",
+                ssh_ip=self.context.ssh_ip,
+                ssh_user=self.context.ssh_user,
+                ssh_password=self.context.ssh_password,
+            )
+            tm.create_terminal(
+                "dut",
+                ssh_ip=self.context.ssh_ip,
+                ssh_user=self.context.ssh_user,
+                ssh_password=self.context.ssh_password,
+            )
 
         logger.info("Terminals created")
 

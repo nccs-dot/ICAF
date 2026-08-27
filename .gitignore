@@ -7,3 +7,6 @@ myenv
 oam.xlsx
 *.png
 .env
+screenshots/
+node_modules/
+webui/node_modules/
