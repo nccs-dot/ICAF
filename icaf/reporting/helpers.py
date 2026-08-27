@@ -710,3 +710,28 @@ def build_doc_with_header_footer(dut_name: str, dut_version: str) -> Document:
         p_el.append(node)
 
     return doc
+
+# ── Added for clause_1_2_4 (Password Policy) ─────────────────────────────────
+
+ERROR_ORANGE = RGBColor(0xCC, 0x66, 0x00)
+
+
+def four_col_table(doc, headers, data_rows, col_widths=None):
+    """Four-column table used in password policy reports."""
+    if col_widths is None:
+        col_widths = [2340, 2340, 2340, 2340]
+    table = doc.add_table(rows=0, cols=4)
+    _set_table_width(table, sum(col_widths))
+    _set_col_widths(table, col_widths)
+    hdr = table.add_row()
+    for ci, (h, w) in enumerate(zip(headers, col_widths)):
+        c = hdr.cells[ci]
+        _style_cell(c, TABLE_HEADER_BG, HEX_PURPLE, w)
+        _para_in_cell(c, h, bold=True, color=WHITE, center=True)
+    for ri, row_vals in enumerate(data_rows):
+        row  = table.add_row()
+        fill = "FFFFFF" if ri % 2 == 0 else TABLE_ALT_BG
+        for ci, (val, w) in enumerate(zip(row_vals, col_widths)):
+            c = row.cells[ci]
+            _style_cell(c, fill, "CCCCCC", w)
+            _para_in_cell(c, str(val or ""), color=DARK_GREY, center=(ci == 0))

@@ -8,3 +8,6 @@ openpyxl
 python-dotenv
 pandas
 requests
+pillow 
+pyscreeze
+paramiko
