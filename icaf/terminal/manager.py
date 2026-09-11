@@ -13,7 +13,7 @@ class TerminalManager:
 
         logger.info("Terminal Manager initialized")
 
-    def create_terminal(self, name: str):
+    def create_terminal(self, name: str, ssh_ip=None, ssh_user=None, ssh_password=None):
         """
         Create a new terminal session.
         """
@@ -22,7 +22,12 @@ class TerminalManager:
             logger.warning(f"Terminal already exists: {name}")
             return self.terminals[name]
 
-        terminal = VisibleTerminal(name)
+        terminal = VisibleTerminal(
+            name,
+            ssh_ip=ssh_ip,
+            ssh_user=ssh_user,
+            ssh_password=ssh_password,
+        )
 
         self.terminals[name] = terminal
 
@@ -46,7 +51,7 @@ class TerminalManager:
             raise Exception(f"Terminal not found: {terminal_name}")
 
         return terminal.run(command)
-    
+
     def screenshot(self, terminal_name: str):
 
         terminal = self.get_terminal(terminal_name)
@@ -55,7 +60,7 @@ class TerminalManager:
             raise Exception("Terminal not found")
 
         return terminal.capture()
-    
+
     def capture_output(self, terminal_name, stable_checks=5, interval=0.2):
 
         terminal = self.get_terminal(terminal_name)

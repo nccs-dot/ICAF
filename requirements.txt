@@ -11,3 +11,6 @@ requests
 pillow 
 pyscreeze
 paramiko
+fastapi
+uvicorn[standard]
+python-multipart

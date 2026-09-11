@@ -43,7 +43,6 @@ CLAUSE_CATALOG = {
     "1.2.4": {"name": "Password Policy Compliance", "testcases": []},
     "1.6.1": {"name": "Network Security", "testcases": []},
     "1.6.5": {"name": "Secure Remote Access", "testcases": []},
-    "1.9.3": {"name": "Credential-based Vulnerability Scanning", "testcases": []},
 }
 
 
