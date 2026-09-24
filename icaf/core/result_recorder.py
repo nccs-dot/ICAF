@@ -1,16 +1,14 @@
 """
 icaf/core/result_recorder.py
 ─────────────────────────────────────────────────────────────────────────────
-Bridge module that keeps your password-policy test logic 100% unchanged while
-feeding results into the icaf framework.
+Shared result recorder for clause test cases.
 
 Your testcases call:
     record_result(tc_id, tc_name, description, input_cmd, output,
                   expected, actual_status, verdict, evidence_files)
     save_evidence(tc_id, command, output)
 
-This module satisfies those calls and stores everything in a flat list that
-the Clause_1_2_4 clause later hands to the report generator.
+Results are stored in a flat list for the report generator.
 """
 
 import os
@@ -79,8 +77,7 @@ def record_result(
 def save_evidence(tc_id: str, command: str, output: str, extra_info: str = "") -> str:
     """
     Write a plain-text evidence file and return its path.
-    Files go into  output/runs/<run_dir>/clause_1_2_4/<tc_id>/logs/
-    (directory created on demand).
+    Files go into output/runs/clause_1_6_5/<tc_id>/logs/ (created on demand).
     """
     evidence_dir = _ensure_evidence_dir(tc_id)
     timestamp    = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -105,21 +102,6 @@ def _ensure_evidence_dir(tc_id: str) -> str:
     return base
 
 
-# Screenshots are taken by ScreenshotStep (scrot) in clause.py — NOT here.
-# Pillow/fake renderer removed.
-
-
+# Screenshots are handled by the clause runners.
 def _take_screenshot(tc_id: str, command: str, output: str, verdict: str) -> str | None:
-  #  try:
-   #     from icaf.reporting.screenshot_generator import render_ubuntu_terminal_screenshot
-    #    shot_dir = os.path.join("output", "runs", "clause_1_2_4", tc_id, "screenshots")
-     #   os.makedirs(shot_dir, exist_ok=True)
-      #  return render_ubuntu_terminal_screenshot(
-       #     tc_id, tc_id,
-        #    str(command)[:200],
-        #    str(output)[:600],
-        #    verdict,
-        #    shot_dir,
-        #)
-    #except Exception:
-        return None
+    return None

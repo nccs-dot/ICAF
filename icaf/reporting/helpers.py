@@ -711,7 +711,7 @@ def build_doc_with_header_footer(dut_name: str, dut_version: str) -> Document:
 
     return doc
 
-# ── Added for clause_1_2_4 (Password Policy) ─────────────────────────────────
+# ── Reusable report layout helpers ─────────────────────────────────
 
 ERROR_ORANGE = RGBColor(0xCC, 0x66, 0x00)
 

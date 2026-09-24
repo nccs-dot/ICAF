@@ -121,27 +121,6 @@ def run(
     web_username = None
     web_password = None
 
-    if clause == "1.2.4":
-        # Password Policy — SSH only, no SNMP or web credentials needed
-        console.print(
-            "\n[bold green]Clause 1.2.4 — Password Policy Compliance[/bold green]\n"
-            "Only SSH credentials are required for this clause.\n"
-        )
-
-    elif clause == "1.9.3":
-        # Vulnerability Scanning — Authenticated/Credentialed audit against DUT IP
-        console.print(
-            "\n[bold green]Clause 1.9.3 — Vulnerability Scanning[/bold green]\n"
-            "Authenticated vulnerability scan: SSH target credentials will be used for auditing.\n"
-        )
-
-    elif clause == "1.2.1":
-        # Authentication Policy — SSH only, no SNMP or web credentials needed
-        console.print(
-            "\n[bold green]Clause 1.2.1 — Authentication Policy[/bold green]\n"
-            "Authentication Policy check: SFTP, SSH, SCP \n"
-        )
-
     elif clause in ["1.1.1", "1.1"]:
 
         console.print("\n[bold yellow]SNMPv3 Configuration[/bold yellow]\n")
