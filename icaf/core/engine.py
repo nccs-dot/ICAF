@@ -10,7 +10,7 @@ from icaf.config.profile_loader import ProfileLoader
 from icaf.utils.logger import logger
 
 # Clauses that only need SSH — no browser initialization needed
-_SSH_ONLY_CLAUSES = {"1.1.3", "1.2.1", "1.2.4", "1.6.5"}
+_SSH_ONLY_CLAUSES = {"1.6.5"}
 
 
 class Engine:

@@ -8,7 +8,7 @@ FIXES:
      then tc_objects[i].raw_result (fallback).
   2. Overall verdict: PASS only when every TC explicitly returned "PASS".
   3. Header patched: "ITSAR 1.1.1" → "ITSAR 1.6.5" via _patch_header_text().
-  4. Safe imports — only imports symbols that exist in clause_1_2_4_report too.
+  4. Safe imports — only imports symbols shared by the report helpers.
 ─────────────────────────────────────────────────────────────────────────────
 """
 
